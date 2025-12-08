@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Council - Cross-Platform UI Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        
+        /* Bounce animations */
+        @keyframes bounce-in {
+            0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slide-up {
+            0% { opacity: 0; transform: translateY(40px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slide-in-right {
+            0% { opacity: 0; transform: translateX(40px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        }
+        @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .bounce-in { animation: bounce-in 0.6s ease-out; }
+        .slide-up { animation: slide-up 0.5s ease-out; }
+        .slide-in-right { animation: slide-in-right 0.5s ease-out; }
+        .pulse-glow { animation: pulse-glow 2s infinite; }
+        .spin-slow { animation: spin-slow 2s linear infinite; }
+        
+        /* Smooth page transitions */
+        .page { display: none; opacity: 0; }
+        .page.active { display: block; opacity: 1; }
+        
+        /* Stage indicators */
+        .stage-dot { 
+            width: 12px; 
+            height: 12px; 
+            border-radius: 50%; 
+            background: #e5e7eb;
+            position: relative;
+        }
+        .stage-dot.active {
+            background: #3b82f6;
+            animation: pulse-glow 1.5s infinite;
+        }
+        .stage-dot.complete {
+            background: #10b981;
+        }
+        
+        /* Responsive container */
+        .container-responsive {
+            width: 100%;
+            max-width: 100%;
+            padding: 0;
+        }
+        @media (min-width: 768px) {
+            .container-responsive {
+                max-width: 768px;
+                padding: 0 16px;
+            }
+        }
+        @media (min-width: 1024px) {
+            .container-responsive {
+                max-width: 1024px;
+                padding: 0 32px;
+            }
+        }
+        
+        /* Mobile first styling */
+        .mobile-only { display: block; }
+        .desktop-only { display: none; }
+        @media (min-width: 768px) {
+            .mobile-only { display: none; }
+            .desktop-only { display: block; }
+        }
+        
+        /* Chat bubble animations */
+        .message-bubble {
+            animation: bounce-in 0.4s ease-out;
+        }
+        
+        /* Tab switching animation */
+        .tab-content { 
+            animation: slide-in-right 0.3s ease-out;
+        }
+        
+        /* Loading animation */
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin-slow 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Mobile Header (hidden on desktop) -->
+    <header class="mobile-only fixed top-0 w-full bg-white border-b border-gray-200 z-50 shadow-sm">
+        <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🎓</span>
+                <h1 class="text-lg font-bold text-gray-900">LLM Council</h1>
+            </div>
+            <button onclick="toggleMobileMenu()" class="p-2 hover:bg-gray-100 rounded-lg">
+                <i class="fas fa-bars text-gray-600"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="flex h-screen overflow-hidden pt-14 md:pt-0">
+        <!-- Desktop Sidebar (hidden on mobile) -->
+        <aside class="desktop-only w-64 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-8">
+                    <span class="text-3xl">🎓</span>
+                    <h1 class="text-xl font-bold">LLM Council</h1>
+                </div>
+                <nav class="space-y-2">
+                    <button onclick="navigateTo('conversations')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-blue-50 text-blue-600 font-semibold transition-all">
+                        <i class="fas fa-comments mr-3"></i>Conversations
+                    </button>
+                    <button onclick="navigateTo('configure')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700 transition-all">
+                        <i class="fas fa-sliders-h mr-3"></i>Configure Council
+                    </button>
+                    <button onclick="navigateTo('settings')" class="w-full text-left px-4 py-2 rounded-lg hover:bg-gray-100 text-gray-700 transition-all">
+                        <i class="fas fa-cog mr-3"></i>Settings
+                    </button>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto bg-gray-50">
+            
+            <!-- 1. AUTHENTICATION PAGE -->
+            <div id="page-auth" class="page active min-h-screen flex items-center justify-center p-4">
+                <div class="w-full max-w-md bounce-in">
+                    <!-- Onboarding Carousel -->
+                    <div id="onboarding" class="space-y-6">
+                        <!-- Slide 1 -->
+                        <div id="slide-1" class="text-center space-y-6 slide-up">
+                            <div class="text-6xl mb-4 inline-block">🤝</div>
+                            <h2 class="text-3xl font-bold text-gray-900">Multiple AI Models Debate</h2>
+                            <p class="text-gray-600 text-lg">Get expert answers from 4+ AI models discussing your question together</p>
+                            <button onclick="nextSlide()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 active:scale-95 transition-transform">
+                                Next <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+
+                        <!-- Slide 2 (hidden) -->
+                        <div id="slide-2" class="text-center space-y-6 slide-up hidden">
+                            <div class="text-6xl mb-4 inline-block">🆓</div>
+                            <h2 class="text-3xl font-bold text-gray-900">Free Forever with Your Key</h2>
+                            <p class="text-gray-600 text-lg">Bring your own OpenRouter key, unlimited access to free AI models</p>
+                            <button onclick="nextSlide()" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 active:scale-95">
+                                Next <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+
+                        <!-- Slide 3 (hidden) -->
+                        <div id="slide-3" class="text-center space-y-6 slide-up hidden">
+                            <div class="text-6xl mb-4 inline-block">⚡</div>
+                            <h2 class="text-3xl font-bold text-gray-900">Premium Power</h2>
+                            <p class="text-gray-600 text-lg">Unlock GPT-4o, Claude Opus, Gemini Pro for just ₹149/month</p>
+                            <button onclick="navigateTo('sign-in')" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 active:scale-95">
+                                Get Started <i class="fas fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Progress dots -->
+                    <div class="flex gap-2 justify-center mt-8">
+                        <div id="dot-1" class="stage-dot active" onclick="goToSlide(1)"></div>
+                        <div id="dot-2" class="stage-dot" onclick="goToSlide(2)"></div>
+                        <div id="dot-3" class="stage-dot" onclick="goToSlide(3)"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. SIGN IN PAGE -->
+            <div id="page-sign-in" class="page min-h-screen flex items-center justify-center p-4">
+                <div class="w-full max-w-md bounce-in space-y-6">
+                    <div class="text-center mb-8">
+                        <span class="text-5xl">🎓</span>
+                        <h2 class="text-2xl font-bold mt-4">Welcome to LLM Council</h2>
+                        <p class="text-gray-600 mt-2">Choose your preferred sign-in method</p>
+                    </div>
+
+                    <!-- Phone Sign In -->
+                    <div class="space-y-4">
+                        <label class="block text-sm font-semibold text-gray-700">Phone Number</label>
+                        <div class="flex gap-2">
+                            <input type="text" value="+91" disabled class="w-14 px-2 py-3 border border-gray-300 rounded-lg bg-gray-50 text-center font-semibold" />
+                            <input type="tel" placeholder="9876543210" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <button onclick="navigateTo('otp')" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 active:scale-95">
+                            Send OTP <i class="fas fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="relative py-4">
+                        <div class="absolute inset-0 flex items-center">
+                            <div class="w-full border-t border-gray-300"></div>
+                        </div>
+                        <div class="relative flex justify-center text-sm">
+                            <span class="px-2 bg-gray-50 text-gray-500">Or continue with</span>
+                        </div>
+                    </div>
+
+                    <!-- OAuth buttons -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 active:scale-95 transition-transform">
+                            <i class="fab fa-google text-red-500"></i>
+                            <span class="hidden sm:inline">Google</span>
+                        </button>
+                        <button class="flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-xl hover:bg-gray-50 active:scale-95 transition-transform">
+                            <i class="fab fa-apple text-gray-900"></i>
+                            <span class="hidden sm:inline">Apple</span>
+                        </button>
+                    </div>
+
+                    <p class="text-center text-sm text-gray-600">
+                        By continuing, you agree to our <a href="#" class="text-blue-600 font-semibold">Terms</a> and <a href="#" class="text-blue-600 font-semibold">Privacy</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 3. OTP VERIFICATION -->
+            <div id="page-otp" class="page min-h-screen flex items-center justify-center p-4">
+                <div class="w-full max-w-md bounce-in space-y-6">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold">Enter OTP</h2>
+                        <p class="text-gray-600 mt-2">We've sent a 6-digit code to +91 98765 43210</p>
+                    </div>
+
+                    <!-- OTP Input -->
+                    <div class="flex gap-3 justify-center">
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                        <input type="text" maxlength="1" class="w-12 h-12 text-center border-2 border-gray-300 rounded-lg text-xl font-bold focus:border-blue-500 focus:ring-2 focus:ring-blue-200" />
+                    </div>
+
+                    <!-- Resend -->
+                    <div class="text-center">
+                        <p class="text-gray-600">Didn't receive? <a href="#" class="text-blue-600 font-semibold">Resend in 30s</a></p>
+                    </div>
+
+                    <!-- Verify Button -->
+                    <button onclick="navigateTo('byok-setup')" class="w-full bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 active:scale-95">
+                        Verify OTP
+                    </button>
+
+                    <!-- Edit Number -->
+                    <button onclick="navigateTo('sign-in')" class="w-full py-3 border border-gray-300 rounded-xl font-semibold hover:bg-gray-50">
+                        Edit Phone Number
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. BYOK SETUP (Free Users) -->
+            <div id="page-byok-setup" class="page min-h-screen p-4 md:p-8">
+                <div class="max-w-2xl mx-auto bounce-in">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold mb-2">Connect Your OpenRouter Key 🔑</h2>
+                        <p class="text-gray-600">Unlock unlimited access to free AI models</p>
+                    </div>
+
+                    <!-- Benefits Card -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 mb-8 slide-up">
+                        <h3 class="font-semibold text-lg mb-4">✨ With Your Key:</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                            <div class="flex gap-3">
+                                <span class="text-xl">🚀</span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">Unlimited Access</p>
+                                    <p class="text-gray-700">4 free AI models, no daily limits</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="text-xl">⚙️</span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">Custom Councils</p>
+                                    <p class="text-gray-700">Mix and match any models</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="text-xl">🎯</span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">Full Control</p>
+                                    <p class="text-gray-700">You own your data & costs</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-3">
+                                <span class="text-xl">💰</span>
+                                <div>
+                                    <p class="font-semibold text-gray-900">Cost Transparent</p>
+                                    <p class="text-gray-700">Most queries are free</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Steps -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm mb-8">
+                        <h3 class="font-semibold text-lg mb-4">How to get your key:</h3>
+                        <div class="space-y-4">
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">1</div>
+                                <div>
+                                    <p class="font-semibold">Visit <a href="#" class="text-blue-600">openrouter.ai</a> and sign up</p>
+                                    <p class="text-sm text-gray-600">Get free credits automatically</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">2</div>
+                                <div>
+                                    <p class="font-semibold">Go to Keys → Create Key</p>
+                                    <p class="text-sm text-gray-600">Copy the sk-or-v1-... key</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">3</div>
+                                <div>
+                                    <p class="font-semibold">Paste it below and validate</p>
+                                    <p class="text-sm text-gray-600">We'll test it securely</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API Key Input -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm mb-8">
+                        <label class="block text-sm font-semibold text-gray-700 mb-3">Your OpenRouter API Key</label>
+                        <input type="password" placeholder="sk-or-v1-..." class="w-full px-4 py-3 border border-gray-300 rounded-lg font-mono focus:ring-2 focus:ring-blue-500 outline-none" />
+                        <p class="text-xs text-gray-500 mt-2">🔒 Stored securely on your device, never sent to our servers</p>
+                    </div>
+
+                    <!-- CTA -->
+                    <button onclick="navigateTo('conversations')" class="w-full bg-blue-500 text-white py-4 rounded-xl font-semibold text-lg hover:bg-blue-600 active:scale-95 mb-4">
+                        Validate & Continue <i class="fas fa-check ml-2"></i>
+                    </button>
+
+                    <!-- Premium Upsell -->
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl p-6 text-white">
+                        <h3 class="font-bold text-lg mb-2">🚀 Skip Setup & Go Premium?</h3>
+                        <p class="text-sm mb-4">Get instant access to GPT-4o, Claude Opus, Gemini Pro + more</p>
+                        <button onclick="navigateTo('paywall')" class="w-full bg-white text-purple-600 py-2 rounded-lg font-semibold hover:bg-gray-100 active:scale-95">
+                            View Premium Plans
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. CONFIGURE COUNCIL -->
+            <div id="page-configure" class="page min-h-screen p-4 md:p-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="mb-8 bounce-in">
+                        <h2 class="text-3xl font-bold mb-2">Configure Your Council</h2>
+                        <p class="text-gray-600">Select 2-4 models to debate your questions</p>
+                    </div>
+
+                    <!-- Model Selection -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <!-- Free Models Section -->
+                        <div class="md:col-span-2">
+                            <h3 class="font-bold text-lg mb-4">Council Members (2-4 selected)</h3>
+                        </div>
+
+                        <!-- Model Cards -->
+                        <div class="bg-white border-2 border-blue-500 rounded-xl p-4 cursor-pointer hover:shadow-lg active:scale-95 transition-all slide-up">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">🟢</span>
+                                    <div>
+                                        <p class="font-semibold">Gemini 2.0 Flash</p>
+                                        <p class="text-xs text-gray-600">1M context · Free</p>
+                                    </div>
+                                </div>
+                                <div class="w-5 h-5 rounded-full border-2 border-blue-500 bg-blue-500"></div>
+                            </div>
+                            <p class="text-sm text-gray-700">Best reasoning, multimodal support</p>
+                        </div>
+
+                        <div class="bg-white border-2 border-gray-300 rounded-xl p-4 cursor-pointer hover:shadow-lg active:scale-95 transition-all slide-up" style="animation-delay: 0.1s">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">🔵</span>
+                                    <div>
+                                        <p class="font-semibold">Qwen QwQ 32B</p>
+                                        <p class="text-xs text-gray-600">32K context · Free</p>
+                                    </div>
+                                </div>
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400"></div>
+                            </div>
+                            <p class="text-sm text-gray-700">Strong math & logic performance</p>
+                        </div>
+
+                        <div class="bg-white border-2 border-blue-500 rounded-xl p-4 cursor-pointer hover:shadow-lg active:scale-95 transition-all slide-up" style="animation-delay: 0.2s">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">🟣</span>
+                                    <div>
+                                        <p class="font-semibold">DeepSeek R1</p>
+                                        <p class="text-xs text-gray-600">64K context · Free</p>
+                                    </div>
+                                </div>
+                                <div class="w-5 h-5 rounded-full border-2 border-blue-500 bg-blue-500"></div>
+                            </div>
+                            <p class="text-sm text-gray-700">Fast reasoning, code generation</p>
+                        </div>
+
+                        <div class="bg-white border-2 border-gray-300 rounded-xl p-4 cursor-pointer opacity-60 hover:shadow-lg transition-all slide-up" style="animation-delay: 0.3s">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-3xl">💎</span>
+                                    <div>
+                                        <p class="font-semibold">GPT-4o</p>
+                                        <p class="text-xs text-gray-600">128K context · PRO</p>
+                                    </div>
+                                </div>
+                                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center">
+                                    <i class="fas fa-lock text-xs text-gray-500"></i>
+                                </div>
+                            </div>
+                            <p class="text-sm text-gray-600">Premium subscription required</p>
+                        </div>
+                    </div>
+
+                    <!-- Chairman Selection -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm">
+                        <h3 class="font-bold text-lg mb-4">Chairman Model</h3>
+                        <p class="text-gray-600 text-sm mb-4">Synthesizes the final answer after all models debate</p>
+                        
+                        <div class="space-y-2">
+                            <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 active:scale-95 transition-all">
+                                <input type="radio" name="chairman" checked class="w-4 h-4 text-blue-500" />
+                                <div class="ml-3 flex-1">
+                                    <p class="font-semibold">Gemini 2.0 Flash</p>
+                                    <p class="text-xs text-gray-600">Fast & accurate synthesis</p>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 active:scale-95 transition-all">
+                                <input type="radio" name="chairman" class="w-4 h-4 text-blue-500" />
+                                <div class="ml-3 flex-1">
+                                    <p class="font-semibold">Qwen QwQ 32B</p>
+                                    <p class="text-xs text-gray-600">Deep reasoning synthesis</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Save Button -->
+                    <button onclick="navigateTo('conversations')" class="w-full mt-8 bg-blue-500 text-white py-4 rounded-xl font-semibold text-lg hover:bg-blue-600 active:scale-95">
+                        Save Configuration <i class="fas fa-check ml-2"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. CHAT INTERFACE -->
+            <div id="page-conversations" class="page min-h-screen flex flex-col p-4 md:p-8">
+                <div class="max-w-4xl mx-auto w-full flex flex-col h-full">
+                    <!-- Chat Header -->
+                    <div class="mb-6 bounce-in">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-2xl font-bold">LLM Council Chat</h2>
+                                <p class="text-gray-600 text-sm">4 models debating: Gemini 2.0, Qwen, DeepSeek, Llama</p>
+                            </div>
+                            <button onclick="navigateTo('configure')" class="p-3 hover:bg-gray-100 rounded-lg transition-all">
+                                <i class="fas fa-sliders-h text-gray-600"></i>
+                            </button>
+                        </div>
+
+                        <!-- Stage Progress -->
+                        <div class="flex items-center justify-between gap-2 text-xs">
+                            <div class="flex-1 text-center">
+                                <div class="stage-dot complete mx-auto mb-1"></div>
+                                <p class="text-gray-700 font-semibold">Stage 1</p>
+                                <p class="text-gray-500">Responses</p>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-green-500"></div>
+                            <div class="flex-1 text-center">
+                                <div class="stage-dot complete mx-auto mb-1"></div>
+                                <p class="text-gray-700 font-semibold">Stage 2</p>
+                                <p class="text-gray-500">Rankings</p>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-blue-500"></div>
+                            <div class="flex-1 text-center">
+                                <div class="stage-dot active mx-auto mb-1"></div>
+                                <p class="text-gray-700 font-semibold">Stage 3</p>
+                                <p class="text-gray-500">Synthesis</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Messages Area -->
+                    <div class="flex-1 overflow-y-auto mb-6 space-y-4">
+                        <!-- User Message -->
+                        <div class="flex justify-end message-bubble">
+                            <div class="max-w-xs md:max-w-md bg-blue-500 text-white rounded-2xl rounded-tr-none px-4 py-3">
+                                <p>How do I optimize database queries for better performance?</p>
+                                <p class="text-xs text-blue-100 mt-1">2:34 PM</p>
+                            </div>
+                        </div>
+
+                        <!-- Loading States -->
+                        <div class="flex justify-start">
+                            <div class="bg-gray-200 text-gray-700 rounded-2xl rounded-tl-none px-4 py-3 message-bubble">
+                                <div class="flex items-center gap-2">
+                                    <div class="loader" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                                    <span class="text-sm">Consulting council members...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stage 1: Individual Responses (Tabs) -->
+                        <div class="bg-white rounded-2xl p-4 shadow-sm message-bubble" style="animation-delay: 0.2s">
+                            <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                <button class="flex-shrink-0 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg font-semibold text-sm">Gemini 🟢</button>
+                                <button class="flex-shrink-0 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-sm hover:bg-gray-200">Qwen 🔵</button>
+                                <button class="flex-shrink-0 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg font-semibold text-sm hover:bg-gray-200">DeepSeek 🟣</button>
+                            </div>
+                            <div class="text-sm text-gray-800 leading-relaxed tab-content">
+                                <p class="font-semibold mb-2">Response A - Database Query Optimization</p>
+                                <p>Use indexing on frequently queried columns. Consider query caching and connection pooling. Profile with EXPLAIN to identify slow queries...</p>
+                            </div>
+                        </div>
+
+                        <!-- Stage 2: Rankings -->
+                        <div class="bg-white rounded-2xl p-4 shadow-sm message-bubble" style="animation-delay: 0.4s">
+                            <p class="font-semibold mb-3 text-gray-900">Stage 2: Peer Rankings</p>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between p-2 bg-green-50 rounded-lg border-l-4 border-green-500">
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-bold text-green-600">1st</span>
+                                        <span class="text-gray-800">Response C - Most comprehensive with examples</span>
+                                    </div>
+                                    <span class="text-xs text-gray-600">Avg: 1.0</span>
+                                </div>
+                                <div class="flex items-center justify-between p-2 bg-yellow-50 rounded-lg border-l-4 border-yellow-500">
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-bold text-yellow-600">2nd</span>
+                                        <span class="text-gray-800">Response A - Good but less detailed</span>
+                                    </div>
+                                    <span class="text-xs text-gray-600">Avg: 2.0</span>
+                                </div>
+                                <div class="flex items-center justify-between p-2 bg-orange-50 rounded-lg border-l-4 border-orange-500">
+                                    <div class="flex items-center gap-3">
+                                        <span class="font-bold text-orange-600">3rd</span>
+                                        <span class="text-gray-800">Response B - Missing context</span>
+                                    </div>
+                                    <span class="text-xs text-gray-600">Avg: 3.0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Stage 3: Final Answer -->
+                        <div class="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4 shadow-sm message-bubble border-l-4 border-green-500" style="animation-delay: 0.6s">
+                            <div class="flex items-start gap-3">
+                                <span class="text-2xl">✨</span>
+                                <div>
+                                    <p class="font-bold text-gray-900 mb-2">Final Answer (Chairman: Gemini 2.0)</p>
+                                    <p class="text-gray-800 leading-relaxed">
+                                        After careful consideration, the council recommends a multi-layered approach: First, implement strategic indexing on high-cardinality columns and foreign keys. Second, use query caching for repeated queries. Third, leverage connection pooling and batch processing where possible...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div class="bg-white rounded-2xl shadow-lg p-4">
+                        <!-- File Attachments -->
+                        <div class="flex gap-2 mb-3">
+                            <div class="bg-blue-100 text-blue-600 px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-2">
+                                <i class="fas fa-image"></i> profile.jpg
+                                <button class="ml-1 hover:text-blue-700">✕</button>
+                            </div>
+                            <button class="px-3 py-1 border border-dashed border-gray-300 rounded-lg text-xs text-gray-600 hover:bg-gray-50 active:scale-95 transition-transform">
+                                <i class="fas fa-plus mr-1"></i>Add file
+                            </button>
+                        </div>
+
+                        <!-- Input with buttons -->
+                        <div class="flex gap-2">
+                            <button class="p-3 hover:bg-gray-100 rounded-lg text-gray-600 transition-all">
+                                <i class="fas fa-image text-lg"></i>
+                            </button>
+                            <button class="p-3 hover:bg-gray-100 rounded-lg text-gray-600 transition-all">
+                                <i class="fas fa-file-pdf text-lg"></i>
+                            </button>
+                            <textarea placeholder="Ask your council..." class="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none resize-none" rows="2"></textarea>
+                            <button class="px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 active:scale-95 transition-all">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. PAYWALL -->
+            <div id="page-paywall" class="page min-h-screen p-4 md:p-8 bg-gradient-to-b from-white to-blue-50">
+                <div class="max-w-3xl mx-auto bounce-in">
+                    <!-- Header -->
+                    <div class="text-center mb-12">
+                        <h2 class="text-4xl font-bold mb-3">Unlock Premium Council 🚀</h2>
+                        <p class="text-gray-600 text-lg">Access latest AI models: GPT-4o, Claude Opus, Gemini Pro</p>
+                    </div>
+
+                    <!-- Feature Comparison -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                        <!-- Free Tier -->
+                        <div class="bg-white rounded-xl p-6 shadow-sm">
+                            <h3 class="text-xl font-bold mb-4">Free Tier</h3>
+                            <p class="text-3xl font-bold mb-6">₹0<span class="text-sm text-gray-600">/forever</span></p>
+                            <button class="w-full py-3 border-2 border-gray-300 rounded-xl font-semibold mb-6 hover:bg-gray-50">
+                                Your Current Plan
+                            </button>
+                            <ul class="space-y-3 text-sm">
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check text-green-500 mt-0.5"></i>
+                                    <span>4 free AI models (with BYOK)</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check text-green-500 mt-0.5"></i>
+                                    <span>Unlimited searches</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-times text-gray-400 mt-0.5"></i>
+                                    <span class="text-gray-500">Premium models</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-times text-gray-400 mt-0.5"></i>
+                                    <span class="text-gray-500">File uploads</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- Premium Tier -->
+                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 shadow-lg text-white relative overflow-hidden">
+                            <div class="absolute top-0 right-0 bg-yellow-400 text-gray-900 px-4 py-2 text-sm font-bold rounded-bl-lg">SAVE 16%</div>
+                            <h3 class="text-xl font-bold mb-4">Premium</h3>
+                            <p class="text-3xl font-bold mb-2">₹149<span class="text-sm opacity-90">/month</span></p>
+                            <p class="text-sm opacity-90 mb-6">or ₹1,499/year</p>
+                            <button class="w-full bg-white text-blue-600 py-3 rounded-xl font-semibold mb-6 hover:bg-gray-100 active:scale-95 transition-transform pulse-glow">
+                                Start Premium
+                            </button>
+                            <ul class="space-y-3 text-sm">
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check mt-0.5"></i>
+                                    <span>5 premium AI models</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check mt-0.5"></i>
+                                    <span>Unlimited searches</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check mt-0.5"></i>
+                                    <span>Image & PDF uploads</span>
+                                </li>
+                                <li class="flex gap-3">
+                                    <i class="fas fa-check mt-0.5"></i>
+                                    <span>Cloud sync & history</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="bg-white rounded-xl p-8 shadow-sm mb-8">
+                        <h3 class="text-lg font-bold mb-6">Choose Payment Method</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- RevenueCat -->
+                            <button class="border-2 border-gray-300 rounded-xl p-6 hover:border-blue-500 hover:bg-blue-50 active:scale-95 transition-all text-left">
+                                <div class="flex items-start justify-between mb-3">
+                                    <h4 class="font-semibold">App Store & Play Store</h4>
+                                    <i class="fas fa-check text-blue-500"></i>
+                                </div>
+                                <p class="text-sm text-gray-600">Secure billing through official stores</p>
+                                <p class="text-xs text-gray-500 mt-2">Auto-renewal, easy cancellation</p>
+                            </button>
+
+                            <!-- Razorpay UPI -->
+                            <button class="border-2 border-gray-300 rounded-xl p-6 hover:border-orange-500 hover:bg-orange-50 active:scale-95 transition-all text-left">
+                                <div class="flex items-start justify-between mb-3">
+                                    <h4 class="font-semibold">UPI AutoPay (India)</h4>
+                                    <span class="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded">SAVE 15%</span>
+                                </div>
+                                <p class="text-sm text-gray-600">Pay via PhonePe, Google Pay, Paytm</p>
+                                <p class="text-xs text-gray-500 mt-2">No hidden fees, transparent pricing</p>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- FAQ -->
+                    <div class="bg-blue-50 rounded-xl p-6">
+                        <h3 class="font-bold mb-4">Frequently Asked Questions</h3>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <p class="font-semibold text-gray-900">Can I cancel anytime?</p>
+                                <p class="text-gray-600">Yes, cancel your subscription anytime. No refunds, but you keep access through end of cycle.</p>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-900">What if I'm not satisfied?</p>
+                                <p class="text-gray-600">Full refund within 7 days of subscription. No questions asked.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8. SETTINGS -->
+            <div id="page-settings" class="page min-h-screen p-4 md:p-8">
+                <div class="max-w-2xl mx-auto bounce-in">
+                    <h2 class="text-3xl font-bold mb-8">Settings</h2>
+
+                    <!-- Account Section -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+                        <h3 class="font-bold text-lg mb-4">Account</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+                                <div>
+                                    <p class="font-semibold">Email</p>
+                                    <p class="text-gray-600 text-sm">user@example.com</p>
+                                </div>
+                                <button class="text-blue-600 font-semibold hover:text-blue-700">Change</button>
+                            </div>
+                            <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+                                <div>
+                                    <p class="font-semibold">Phone</p>
+                                    <p class="text-gray-600 text-sm">+91 98765 43210</p>
+                                </div>
+                                <button class="text-blue-600 font-semibold hover:text-blue-700">Change</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subscription Section -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+                        <h3 class="font-bold text-lg mb-4">Subscription</h3>
+                        <div class="bg-blue-50 p-4 rounded-lg mb-4 border-l-4 border-blue-500">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="font-semibold">Premium Active</p>
+                                    <p class="text-sm text-gray-600">Renews on Dec 15, 2025</p>
+                                </div>
+                                <span class="bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold">ACTIVE</span>
+                            </div>
+                        </div>
+                        <button class="w-full py-3 border-2 border-gray-300 rounded-xl font-semibold mb-2 hover:bg-gray-50">
+                            Manage Subscription
+                        </button>
+                        <button class="w-full py-3 text-red-600 font-semibold hover:text-red-700">
+                            Cancel Subscription
+                        </button>
+                    </div>
+
+                    <!-- Preferences Section -->
+                    <div class="bg-white rounded-xl p-6 shadow-sm mb-6">
+                        <h3 class="font-bold text-lg mb-4">Preferences</h3>
+                        <div class="space-y-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-5 h-5 rounded" />
+                                <span class="text-gray-900 font-semibold">Dark Mode</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-5 h-5 rounded" />
+                                <span class="text-gray-900 font-semibold">Push Notifications</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" checked class="w-5 h-5 rounded" />
+                                <span class="text-gray-900 font-semibold">Email Digest</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="bg-red-50 rounded-xl p-6 shadow-sm border-2 border-red-200">
+                        <h3 class="font-bold text-lg text-red-600 mb-4">Danger Zone</h3>
+                        <button class="w-full py-3 border-2 border-red-300 text-red-600 rounded-xl font-semibold hover:bg-red-100 active:scale-95 transition-transform">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Sign Out
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Navigation
+        const pages = ['auth', 'sign-in', 'otp', 'byok-setup', 'configure', 'conversations', 'paywall', 'settings'];
+        
+        function navigateTo(page) {
+            pages.forEach(p => {
+                document.getElementById(`page-${p}`).classList.remove('active');
+            });
+            document.getElementById(`page-${page}`).classList.add('active');
+        }
+
+        // Onboarding slides
+        let currentSlide = 1;
+        function nextSlide() {
+            goToSlide(currentSlide + 1);
+        }
+        function goToSlide(n) {
+            for (let i = 1; i <= 3; i++) {
+                document.getElementById(`slide-${i}`).classList.add('hidden');
+                document.getElementById(`dot-${i}`).classList.remove('active');
+            }
+            if (n <= 3) {
+                document.getElementById(`slide-${n}`).classList.remove('hidden');
+                document.getElementById(`dot-${n}`).classList.add('active');
+                currentSlide = n;
+            }
+        }
+
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            console.log('Menu toggled');
+        }
+
+        // Demo interaction
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('LLM Council UI Prototype loaded');
+        });
+    </script>
+</body>
+</html>
