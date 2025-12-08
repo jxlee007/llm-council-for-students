@@ -722,26 +722,57 @@ async function runMockChatFlow(query) {
     `);
     scrollToBottom();
 
-    // Stage 3: Model Badges
+    // Stage 3: Responses Modal with Tabs
     await delay(800);
-    addElement(container, `
-        <div class="model-badges">
-            <span class="model-badge-item gemini">Gemini <span class="status-dot"></span></span>
-            <span class="model-badge-item qwen">Qwen <span class="status-dot"></span></span>
-            <span class="model-badge-item deepseek">DeepSeek <span class="status-dot"></span></span>
+    const responsesModal = addElement(container, `
+        <div class="responses-modal" id="responses-modal">
+            <div class="responses-tabs">
+                <button class="response-tab active" data-model="gemini" onclick="switchResponseTab('gemini')">
+                    Gemini <span class="tab-status" id="status-gemini"></span>
+                </button>
+                <button class="response-tab" data-model="qwen" onclick="switchResponseTab('qwen')">
+                    Qwen <span class="tab-status" id="status-qwen"></span>
+                </button>
+                <button class="response-tab" data-model="deepseek" onclick="switchResponseTab('deepseek')">
+                    DeepSeek <span class="tab-status" id="status-deepseek"></span>
+                </button>
+            </div>
+            <div class="responses-content">
+                <div class="response-panel active" id="panel-gemini">
+                    <div class="response-loading">
+                        <span class="loading-dot"></span>
+                        <span>Fetching response...</span>
+                    </div>
+                </div>
+                <div class="response-panel" id="panel-qwen">
+                    <div class="response-loading">
+                        <span class="loading-dot"></span>
+                        <span>Fetching response...</span>
+                    </div>
+                </div>
+                <div class="response-panel" id="panel-deepseek">
+                    <div class="response-loading">
+                        <span class="loading-dot"></span>
+                        <span>Fetching response...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     `);
     scrollToBottom();
 
-    // Stage 4: Model Response
-    await delay(1200);
-    addElement(container, `
-        <div class="model-response">
-            <h4>Response A - Database Query Optimization</h4>
-            <p>Use indexing on frequently queried columns. Consider query caching and connection pooling. Profile with EXPLAIN to identify slow queries...</p>
-        </div>
-    `);
-    scrollToBottom();
+    // Simulate responses arriving one by one
+    await delay(800);
+    updateModelResponse('gemini', 'Response A - Database Query Optimization',
+        'Use indexing on frequently queried columns. Consider query caching and connection pooling. Profile with EXPLAIN to identify slow queries...');
+
+    await delay(600);
+    updateModelResponse('qwen', 'Response B - Performance Tuning',
+        'Focus on query optimization through proper indexing strategies. Use connection pooling to reduce overhead. Consider caching frequently accessed data...');
+
+    await delay(500);
+    updateModelResponse('deepseek', 'Response C - Comprehensive Approach',
+        'Implement multi-layered optimization: 1) Index high-cardinality columns 2) Use query plan analysis 3) Implement read replicas for scaling 4) Add caching layer with Redis...');
 
     // Update stage progress
     document.getElementById('stage-1').classList.remove('active');
@@ -803,6 +834,39 @@ function addElement(container, html) {
     const el = wrapper.firstChild;
     container.appendChild(el);
     return el;
+}
+
+function switchResponseTab(model) {
+    triggerHaptic();
+
+    // Update tab active states
+    document.querySelectorAll('.response-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.model === model);
+    });
+
+    // Update panel visibility
+    document.querySelectorAll('.response-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    document.getElementById(`panel-${model}`).classList.add('active');
+}
+
+function updateModelResponse(model, title, content) {
+    // Update the status indicator to checkmark
+    const status = document.getElementById(`status-${model}`);
+    if (status) {
+        status.classList.add('complete');
+        status.textContent = '✓';
+    }
+
+    // Update the panel content
+    const panel = document.getElementById(`panel-${model}`);
+    if (panel) {
+        panel.innerHTML = `
+            <h4>${title}</h4>
+            <p>${content}</p>
+        `;
+    }
 }
 
 function delay(ms) {
@@ -891,3 +955,4 @@ window.sendMessage = sendMessage;
 window.autoResizeTextarea = autoResizeTextarea;
 window.triggerFileUpload = triggerFileUpload;
 window.removeFile = removeFile;
+window.switchResponseTab = switchResponseTab;

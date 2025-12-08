@@ -1072,6 +1072,106 @@ body {
     border-color: #22c55e;
 }
 
+/* ---------- Responses Modal ---------- */
+.responses-modal {
+    background: var(--bg-card);
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+.responses-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-light);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.responses-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.response-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.response-tab.active {
+    color: var(--text-primary);
+}
+
+.response-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-cyan);
+}
+
+.response-tab .tab-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-cyan);
+    animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.response-tab .tab-status.complete {
+    width: auto;
+    height: auto;
+    background: transparent;
+    animation: none;
+    color: #22c55e;
+    font-size: 14px;
+}
+
+.responses-content {
+    padding: 16px;
+    min-height: 100px;
+}
+
+.response-panel {
+    display: none;
+}
+
+.response-panel.active {
+    display: block;
+}
+
+.response-panel h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
+.response-panel p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.response-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
 /* ---------- Model Response ---------- */
 .model-response {
     background: var(--bg-card);

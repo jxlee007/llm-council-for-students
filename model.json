@@ -1,0 +1,48 @@
+{
+  "free": {
+    "code": [
+      "qwen/qwen3-coder:free",
+      "google/gemma-3-27b-it:free",
+      "mistralai/mistral-small-3.1-24b-instruct:free",
+      "meta-llama/llama-3.3-70b-instruct:free",
+      "kwaipilot/kat-coder-pro:free"
+    ],
+    "finance": [
+      "alibaba/tongyi-deepresearch-30b-a3b:free",
+      "openai/gpt-oss-120b:free",
+      "qwen/qwen3-235b-a22b:free",
+      "tngtech/deepseek-r1t-chimera:free",
+      "tngtech/deepseek-r1t2-chimera:free"
+    ],
+    "academia": [
+      "allenai/olmo-3-32b-think:free",
+      "google/gemma-3-12b-it:free",
+      "google/gemma-3-4b-it:free",
+      "google/gemini-2.0-flash-exp:free",
+      "meituan/longcat-flash-chat:free"
+    ]
+  },
+  "paid": {
+    "code": [
+      "openai/gpt-5.1-codex-max",
+      "openai/gpt-5.1",
+      "mistralai/ministral-14b-2512",
+      "deepseek/deepseek-v3.2",
+      "qwen/qwen3-vl-8b-instruct"
+    ],
+    "finance": [
+      "deepseek/deepseek-v3.2-speciale",
+      "perplexity/sonar-pro-search",
+      "amazon/nova-2-lite-v1",
+      "openai/gpt-oss-safeguard-20b",
+      "x-ai/grok-4.1-fast"
+    ],
+    "academia": [
+      "anthropic/claude-opus-4.5",
+      "google/gemini-3-pro-preview",
+      "allenai/olmo-3-7b-think",
+      "moonshotai/kimi-k2-thinking",
+      "google/gemini-embedding-001"
+    ]
+  }
+}
