@@ -1,0 +1,170 @@
+{
+    "threads": [
+        {
+            "id": "1",
+            "title": "BIOBIZ - largest producer of PLA in india ??",
+            "preview": "No, BIOBIZ is not the largest producer of PLA (polylactic acid) in India. BIOBIZ operates as a...",
+            "time": "42m",
+            "bookmarked": true
+        },
+        {
+            "id": "2",
+            "title": "INVEST FUNDS - Research on groww.in/corporate-bonds...",
+            "preview": "Edelweiss Financial Services' latest NCD issue offers coupon rates roughly in the 8.8-10.1% r...",
+            "time": "9h",
+            "bookmarked": true
+        },
+        {
+            "id": "3",
+            "title": "CREDIT GUIDE - Which rupay credit card to buy as beginner ??",
+            "preview": "For a beginner who mainly wants RuPay + UPI, a simple rule is: start with a low/zero-fee RuPa...",
+            "time": "20h",
+            "bookmarked": false
+        },
+        {
+            "id": "4",
+            "title": "LLM COUNCIL for students - i want adapt this codebase...",
+            "preview": "Based on Karpathy's LLM Council architecture and your React Native requirements, here's a...",
+            "time": "1d",
+            "bookmarked": false
+        }
+    ],
+    "collects": [
+        {
+            "id": "bookmarks",
+            "icon": "📌",
+            "title": "Bookmarks",
+            "time": "2d",
+            "privacy": "private"
+        },
+        {
+            "id": "business",
+            "icon": "💼",
+            "title": "BUSINESS",
+            "time": "3d",
+            "privacy": "private"
+        },
+        {
+            "id": "finance",
+            "icon": "💰",
+            "title": "PERSONAL FINANCE",
+            "time": "1w",
+            "privacy": "private"
+        },
+        {
+            "id": "buffet",
+            "icon": "🧓",
+            "title": "What would Buffet say?",
+            "time": "1w",
+            "privacy": "private"
+        },
+        {
+            "id": "code",
+            "icon": "💻",
+            "title": "CODE",
+            "time": "1w",
+            "privacy": "public"
+        },
+        {
+            "id": "art",
+            "icon": "🎨",
+            "title": "WRITE & ART",
+            "time": "1w",
+            "privacy": "private"
+        },
+        {
+            "id": "imp",
+            "icon": "❗",
+            "title": "IMP",
+            "time": "2w",
+            "privacy": "private"
+        },
+        {
+            "id": "games",
+            "icon": "🎮",
+            "title": "GAMES",
+            "time": "10w",
+            "privacy": "private"
+        }
+    ],
+    "models": [
+        {
+            "id": "gemini",
+            "emoji": "🟢",
+            "name": "Gemini 2.0 Flash",
+            "spec": "1M context · Free",
+            "shortName": "Gemini",
+            "locked": false
+        },
+        {
+            "id": "deepseek",
+            "emoji": "🟣",
+            "name": "DeepSeek R1",
+            "spec": "64K context · Free",
+            "shortName": "DeepSeek",
+            "locked": false
+        },
+        {
+            "id": "qwen",
+            "emoji": "🔵",
+            "name": "Qwen QwQ 32B",
+            "spec": "32K context · Free",
+            "shortName": "Qwen",
+            "locked": false
+        },
+        {
+            "id": "llama",
+            "emoji": "🦙",
+            "name": "Llama 3.3 70B",
+            "spec": "128K context · Free",
+            "shortName": "Llama",
+            "locked": false
+        },
+        {
+            "id": "gpt4",
+            "emoji": "💎",
+            "name": "GPT-4o",
+            "spec": "PRO · 128K context",
+            "shortName": "GPT-4",
+            "locked": true
+        },
+        {
+            "id": "claude",
+            "emoji": "🟠",
+            "name": "Claude 3.5 Sonnet",
+            "spec": "PRO · 200K context",
+            "shortName": "C-Sonnet",
+            "locked": true
+        }
+    ],
+    "sources": [
+        {
+            "id": "web",
+            "icon": "fa-globe",
+            "name": "Web",
+            "hint": "Search across the entire Internet",
+            "checked": true
+        },
+        {
+            "id": "academic",
+            "icon": "fa-graduation-cap",
+            "name": "Academic",
+            "hint": "Discuss academic papers",
+            "checked": false
+        },
+        {
+            "id": "finance",
+            "icon": "fa-chart-line",
+            "name": "Finance",
+            "hint": "Discuss SEC filings",
+            "checked": false
+        },
+        {
+            "id": "code",
+            "icon": "fa-comments",
+            "name": "Code",
+            "hint": "Discuss Logic-understanding and patching errors",
+            "checked": false
+        }
+    ]
+}

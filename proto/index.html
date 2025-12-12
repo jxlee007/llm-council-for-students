@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f1419">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>LLM Council For Students - AI Debate Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body class="bg-dark text-white overflow-hidden">
+
+    <!-- ===== SWIPE CONTAINER ===== -->
+    <div class="swipe-container position-center" id="swipe-container">
+
+        <!-- ========== LEFT PAGE: Chat History ========== -->
+        <div class="swipe-page" id="page-history">
+            <!-- Header -->
+            <header class="history-header">
+                <div class="flex items-center gap-3">
+                    <button class="icon-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="icon-btn" onclick="snapToPosition('center')">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Container -->
+            <div class="history-content">
+                <!-- Thread List (dynamically populated from data.json) -->
+                <div class="thread-list" id="threads-view"></div>
+
+                <!-- Empty State for Threads -->
+                <div class="history-empty-state" id="threads-empty-state" style="display: none;">
+                    <div class="empty-icon">💬</div>
+                    <h3 class="empty-title">No conversations yet</h3>
+                    <p class="empty-desc">Start a new chat to see your history here</p>
+                </div>
+
+                <!-- Incognito Mode for Threads -->
+                <div class="history-incognito-state" id="threads-incognito-state" style="display: none;">
+                    <div class="incognito-icon">🕶️</div>
+                    <h3 class="incognito-title">Incognito Mode</h3>
+                    <p class="incognito-desc">Your conversations won't be saved in history</p>
+                    <div class="incognito-badge">
+                        <i class="fas fa-user-secret"></i>
+                        <span>Private Session</span>
+                    </div>
+                </div>
+
+                <!-- Collects Grid (dynamically populated from data.json) -->
+                <div class="collects-grid" id="collects-view" style="display: none;"></div>
+
+                <!-- Empty State for Collects -->
+                <div class="history-empty-state" id="collects-empty-state" style="display: none;">
+                    <div class="empty-icon">📁</div>
+                    <h3 class="empty-title">No collections yet</h3>
+                    <p class="empty-desc">Create a collect to organize your chats</p>
+                    <button class="empty-action-btn" onclick="openNewCollectModal()">
+                        <i class="fas fa-plus"></i>
+                        <span>Create Collect</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- FAB -->
+            <button class="fab" id="history-fab" onclick="handleFabClick()">
+                <i class="fas fa-pen" id="fab-icon"></i>
+            </button>
+
+            <!-- Bottom Tabs -->
+            <nav class="history-tabs">
+                <div class="tab-slider" id="tab-slider"></div>
+                <button class="history-tab active" id="threads-tab" onclick="switchHistoryTab('threads')">
+                    <i class="fas fa-list"></i>
+                    <span>Threads</span>
+                </button>
+                <button class="history-tab" id="collects-tab" onclick="switchHistoryTab('collects')">
+                    <i class="fas fa-th-large"></i>
+                    <span>Collects</span>
+                </button>
+            </nav>
+
+            <!-- Collect Detail View -->
+            <div class="collect-detail-view" id="collect-detail-view">
+                <!-- Header -->
+                <header class="collect-detail-header">
+                    <button class="icon-btn" onclick="closeCollectDetail()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="collect-detail-title">
+                        <span class="collect-detail-icon" id="collect-detail-icon">📌</span>
+                        <h1 id="collect-detail-name">Bookmarks</h1>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="icon-btn" onclick="openCollectMenu(event)">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Add Member Button -->
+                <div class="collect-add-member">
+                    <button class="add-member-btn">
+                        <i class="far fa-user"></i>
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- Collect Threads -->
+                <div class="collect-threads" id="collect-threads">
+                    <!-- Thread items will be loaded here -->
+                </div>
+
+                <!-- Collect Input Bar -->
+                <div class="input-bar">
+                    <div class="input-wrapper">
+                        <textarea class="chat-input" placeholder="Ask anything..." rows="1"
+                            oninput="autoResizeTextarea(this)"></textarea>
+                        <div class="input-actions">
+                            <div class="icon-group">
+                                <button class="input-btn" onclick="openSourcesSheet()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="input-btn" onclick="openModeSheet()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <div class="icon-group">
+                                <button class="send-btn" onclick="sendMessage()">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ========== CENTER PAGE: New Chat ========== -->
+        <div class="swipe-page" id="page-home">
+            <!-- Header -->
+            <header class="home-header">
+                <button class="avatar-btn" onclick="snapToPosition('left')">
+                    <i class="far fa-comment"></i>
+                </button>
+
+                <button class="avatar-btn avatar-photo" onclick="snapToPosition('right')">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </header>
+
+            <!-- Chat Area -->
+            <main class="chat-area" id="chat-area">
+                <!-- Empty state - shown when no messages -->
+                <div class="empty-state" id="empty-state">
+                    <div class="brand">
+                        <span class="brand-text">LLM - COUNCIL
+                            <span class="brand-logo">|</span>
+                            <span class="brand-highlight">FOR STUDENTS</span>
+                        </span>
+                    </div>
+                    <p class="empty-text">Ask your council anything</p>
+                </div>
+
+                <!-- Messages will be inserted here -->
+                <div class="messages-container" id="messages-container" style="display: none;">
+                    <!-- Dynamic messages -->
+                </div>
+            </main>
+
+            <!-- File Attachments Preview -->
+            <div class="file-attachments" id="file-attachments" style="display: none;"></div>
+
+            <!-- Hidden File Input -->
+            <input type="file" id="file-input" accept="image/jpeg,image/png,image/gif,image/webp,.pdf" multiple hidden>
+
+            <!-- Input Bar -->
+            <div class="input-bar">
+                <div class="input-wrapper">
+                    <textarea class="chat-input" placeholder="Ask anything..." id="chat-input" rows="1"
+                        oninput="autoResizeTextarea(this)">
+                    </textarea>
+                    <div class="input-actions">
+                        <div class="icon-group">
+                            <button class="input-btn" onclick="openSourcesSheet()">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="input-btn" onclick="openModeSheet()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="icon-group">
+                            <button class="send-btn" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Mode indicator -->
+                <div class="mode-indicator" id="mode-indicator">
+                    <span class="mode-badge council">Council Config</span>
+                    <span class="mode-models">4 models selected</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== RIGHT PAGE: Settings ========== -->
+        <div class="swipe-page" id="page-settings">
+            <!-- Header -->
+            <header class="settings-header">
+                <button class="icon-btn" onclick="snapToPosition('center')">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h1 class="text-xl font-bold">Settings</h1>
+                <div style="width: 40px;"></div>
+            </header>
+
+            <!-- Settings Content -->
+            <div class="settings-content">
+                <!-- Account Section -->
+                <section class="settings-section">
+                    <h2 class="section-label">Account</h2>
+                    <div class="settings-card">
+                        <div class="settings-item">
+                            <span class="item-label">Username</span>
+                            <span class="item-value">dummy-user-2542</span>
+                        </div>
+                        <div class="settings-item">
+                            <span class="item-label">Email</span>
+                            <span class="item-value text-gray-400">user@example.com</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Toggles Section -->
+                <section class="settings-section">
+                    <div class="settings-card">
+                        <label class="settings-toggle">
+                            <div>
+                                <span class="toggle-label">Incognito Mode</span>
+                                <p class="toggle-desc">Threads won't appear in history</p>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="incognito-toggle">
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label>
+                        <!-- <label class="settings-toggle">
+                            <div>
+                                <span class="toggle-label">Notifications</span>
+                                <p class="toggle-desc">Daily threads from Discover</p>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="notif-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label> 
+                        <label class="settings-toggle">
+                            <div>
+                                <span class="toggle-label">AI Data Retention</span>
+                                <p class="toggle-desc">Help improve AI models</p>
+                            </div>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="data-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </div>
+                        </label> -->
+                    </div>
+                </section>
+
+                <!-- Appearance Section -->
+                <section class="settings-section">
+                    <h2 class="section-label">Appearance</h2>
+                    <div class="settings-card">
+                        <div class="settings-item clickable">
+                            <span class="item-label">Theme</span>
+                            <span class="item-value">System Default <i class="fas fa-chevron-right ml-2"></i></span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Profile Section -->
+                <!-- <section class="settings-section">
+                    <h2 class="section-label">Profile</h2>
+                    <div class="settings-card">
+                         <div class="settings-item clickable" onclick="openCouncilConfig()">
+                            <span class="item-label">Council Config</span>
+                            <span class="item-value">4 models <i class="fas fa-chevron-right ml-2"></i></span>
+                        </div> 
+                        <div class="settings-item clickable">
+                            <span class="item-label">AI Language</span>
+                            <span class="item-value">Auto (Detect Input) <i
+                                    class="fas fa-chevron-right ml-2"></i></span>
+                        </div>
+                        <div class="settings-item clickable">
+                            <span class="item-label">Voice Style</span>
+                            <span class="item-value">Cove <i class="fas fa-chevron-right ml-2"></i></span>
+                        </div>
+                    </div>
+                </section> -->
+
+
+                <!-- Help Section -->
+                <section class="settings-section">
+                    <h2 class="section-label">Help Center</h2>
+                    <div class="settings-card help-accordion">
+                        <!-- Get Started -->
+                        <div class="help-item">
+                            <div class="help-header" onclick="toggleHelp('help-1')">
+                                <span class="item-label">Get started</span>
+                                <i class="fas fa-chevron-down help-icon" id="help-icon-1"></i>
+                            </div>
+                            <div class="help-content" id="help-1">
+                                <div class="help-inner">
+                                    <!-- <h4>Welcome to LLM Council! 🎉</h4> -->
+                                    <p>Here's how to get started in 3 simple steps:</p>
+                                    <ol class="help-steps">
+                                        <li>
+                                            <strong>Open Council Config</strong>
+                                            <p>Tap the settings icon → Council Config to choose your AI models</p>
+                                        </li>
+                                        <li>
+                                            <strong>Select Models</strong>
+                                            <p>Pick 4 council members from free models like Gemini, DeepSeek, Qwen, and
+                                                Llama</p>
+                                        </li>
+                                        <li>
+                                            <strong>Ask Anything</strong>
+                                            <p>Type your question in the chat and let multiple AI models debate to find
+                                                the best answer!</p>
+                                        </li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- What is LLM Council -->
+                        <div class="help-item">
+                            <div class="help-header" onclick="toggleHelp('help-2')">
+                                <span class="item-label">What is LLM Council?</span>
+                                <i class="fas fa-chevron-down help-icon" id="help-icon-2"></i>
+                            </div>
+                            <div class="help-content" id="help-2">
+                                <div class="help-inner">
+                                    <!-- <h4>The Power of AI Collaboration 🤖</h4> -->
+                                    <p>LLM Council is an innovative platform that uses <strong>multiple AI
+                                            models</strong> working together to give you better answers.</p>
+
+                                    <h5>How It Works:</h5>
+                                    <ul class="help-list">
+                                        <li><strong>Council Debate:</strong> 4 AI models analyze your question from
+                                            different perspectives</li>
+                                        <li><strong>Chairman Synthesis:</strong> One model reviews all responses and
+                                            creates the final answer</li>
+                                        <li><strong>Better Results:</strong> Get more balanced, comprehensive answers
+                                            than single-model responses</li>
+                                    </ul>
+
+                                    <h5>Benefits:</h5>
+                                    <ul class="help-list">
+                                        <li>✅ Reduced AI hallucinations through cross-validation</li>
+                                        <li>✅ Multiple perspectives on complex problems</li>
+                                        <li>✅ Free to use with open-source models</li>
+                                        <li>✅ Student-friendly interface designed for learning</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- How to use -->
+                        <div class="help-item">
+                            <div class="help-header" onclick="toggleHelp('help-3')">
+                                <span class="item-label">How to use ??</span>
+                                <i class="fas fa-chevron-down help-icon" id="help-icon-3"></i>
+                            </div>
+                            <div class="help-content" id="help-3">
+                                <div class="help-inner">
+                                    <!-- <h4>Feature Guide 📚</h4> -->
+
+                                    <h5>💬 Chat Features:</h5>
+                                    <ul class="help-list">
+                                        <li><strong>Attach Files:</strong> Tap + icon to add images or PDFs to your
+                                            question</li>
+                                        <li><strong>Web Search:</strong> Tap search icon to enable internet search for
+                                            current information</li>
+                                        <li><strong>Council Mode:</strong> Get answers from multiple AI models debating
+                                            together</li>
+                                    </ul>
+
+                                    <h5>⚙️ Settings:</h5>
+                                    <ul class="help-list">
+                                        <li><strong>Council Config:</strong> Choose which 4 models discuss your
+                                            questions</li>
+                                        <li><strong>Chairman Model:</strong> Pick the model that creates the final
+                                            answer</li>
+                                        <li><strong>Incognito Mode:</strong> Your chats won't be saved in history</li>
+                                    </ul>
+
+                                    <h5>📱 Navigation:</h5>
+                                    <ul class="help-list">
+                                        <li><strong>Swipe Left:</strong> View your chat history and spaces</li>
+                                        <li><strong>Swipe Right:</strong> Access settings and configuration</li>
+                                        <li><strong>Tap Thread:</strong> Resume a previous conversation</li>
+                                    </ul>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Subscription Section -->
+                <!-- <section class="settings-section">
+                    <h2 class="section-label">Subscribe</h2>
+                    <div class="settings-card">
+                        <div class="settings-item clickable" onclick="navigateTo('paywall')">
+                            <span class="item-label">Manage Subscription</span>
+                            <span class="item-value text-cyan-400">FREE <i class="fas fa-chevron-right ml-2"></i></span>
+                        </div>
+                        <div class="settings-item clickable">
+                            <span class="item-label">PRIME PRO Support</span>
+                            <i class="fas fa-chevron-right text-gray-500"></i>
+                        </div>
+                    </div>
+                </section> -->
+
+
+                <!-- More Section -->
+                <!-- <section class="settings-section">
+                    <h2 class="section-label">More</h2>
+                    <div class="settings-card">
+                        <div class="settings-item clickable">
+                            <span class="item-label">Privacy Policy</span>
+                            <i class="fas fa-chevron-right text-gray-500"></i>
+                        </div>
+                        <div class="settings-item clickable">
+                            <span class="item-label">Terms of Service</span>
+                            <i class="fas fa-chevron-right text-gray-500"></i>
+                        </div>
+                    </div>
+                </section> -->
+
+                <!-- Danger Zone -->
+                <section class="settings-section">
+                    <h2 class="section-label text-red-400">Delete Account</h2>
+                    <div class="settings-card danger">
+                        <div class="settings-item clickable">
+                            <span class="item-label text-red-400">Delete your account permanently</span>
+                            <i class="fas fa-chevron-right text-red-400"></i>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Spacer for safe area -->
+                <div class="h-20"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== BOTTOM SHEETS ===== -->
+
+    <!-- Sources Sheet -->
+    <div class="bottom-sheet" id="sources-sheet">
+        <div class="sheet-backdrop" onclick="closeSourcesSheet()"></div>
+        <div class="sheet-content">
+            <div class="sheet-handle"></div>
+            <h3 class="sheet-title">Add sources</h3>
+
+            <!-- File Upload Options -->
+            <div class="source-buttons">
+                <button class="source-btn" onclick="triggerFileUpload(); closeSourcesSheet();">
+                    <i class="fas fa-image"></i>
+                    <span>Image</span>
+                </button>
+                <button class="source-btn" onclick="showToast('Camera not available on web')">
+                    <i class="fas fa-camera"></i>
+                    <span>Camera</span>
+                </button>
+                <button class="source-btn" onclick="triggerFileUpload(); closeSourcesSheet();">
+                    <i class="fas fa-file"></i>
+                    <span>File</span>
+                </button>
+            </div>
+
+            <!-- Source Toggles (dynamically populated from data.json) -->
+            <div class="source-toggles" id="source-toggles"></div>
+        </div>
+    </div>
+
+    <!-- Mode Selection Sheet -->
+    <div class="bottom-sheet" id="mode-sheet">
+        <div class="sheet-backdrop" onclick="closeModeSheet()"></div>
+        <div class="sheet-content">
+            <div class="sheet-handle"></div>
+
+            <!-- Header with Title and Incognito Toggle -->
+            <div class="sheet-header">
+                <!-- Title (left) -->
+                <h3 class="sheet-title">Choose a mode</h3>
+
+                <!-- Incognito Toggle (right) -->
+                <label class="incognito-toggle-compact">
+                    <div class="toggle-switch-compact">
+                        <input type="checkbox" id="incognito-mode">
+                        <span class="toggle-slider-compact"></span>
+                    </div>
+                    <span class="toggle-label-bottom">Incognito</span>
+                </label>
+
+            </div>
+
+            <!-- Mode Options -->
+            <div class="mode-options">
+                <div class="mode-option selected" onclick="selectMode('council')">
+                    <div class="mode-icon council">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="mode-info">
+                        <div class="mode-name">Council Config</div>
+                        <p class="mode-desc">Multiple AI models debate your question</p>
+
+                        <!-- Unified Council Preview Window -->
+                        <div class="council-preview-window" onclick="event.stopPropagation(); openCouncilConfig()">
+                            <div class="preview-row">
+                                <span class="preview-label">Council</span>
+                                <div class="preview-models" id="council-preview-models">
+                                    <span class="preview-model">Gemini</span>
+                                    <span class="preview-model">DeepSeek</span>
+                                </div>
+                            </div>
+                            <div class="preview-divider"></div>
+                            <div class="preview-row">
+                                <span class="preview-label">Chairman</span>
+                                <span class="preview-value" id="chairman-preview-name">Gemini</span>
+                            </div>
+                            <i class="fas fa-chevron-right preview-icon"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Premium Model Selection with OR-FREE mode -->
+                <div class="mode-option premium-mode-container">
+                    <div class="mode-icon orfree">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div class="mode-info">
+                        <div class="mode-name">OR-FREE</div>
+                        <p class="mode-desc">Use free models with your OpenRouter API key</p>
+
+                        <!-- Expandable API Key Info -->
+                        <div class="api-info-dropdown">
+                            <div class="dropdown-header" onclick="toggleApiInfo()">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Need an API key?</span>
+                                <i class="fas fa-chevron-down dropdown-arrow"></i>
+                            </div>
+                            <div class="dropdown-content">
+                                <div class="info-inner">
+                                    <div class="info-icon">🔑</div>
+                                    <h4 class="info-title">OpenRouter Free Models</h4>
+                                    <p class="info-desc">
+                                        OR-FREE mode lets you use unlimited free AI models by connecting
+                                        your own OpenRouter API key.
+                                    </p>
+                                    <div class="info-steps">
+                                        <div class="info-step">
+                                            <span class="step-num">1</span>
+                                            <span>Visit <a href="https://openrouter.ai"
+                                                    target="_blank">openrouter.ai</a></span>
+                                        </div>
+                                        <div class="info-step">
+                                            <span class="step-num">2</span>
+                                            <span>Create a free account & get API key</span>
+                                        </div>
+                                        <div class="info-step">
+                                            <span class="step-num">3</span>
+                                            <span>Paste your key below</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Always Visible Input & Button -->
+                    <input type="password" class="api-input-inline" placeholder="sk-or-v1-..."
+                        id="api-key-input-inline">
+                    <button class="api-btn-inline primary" onclick="validateApiKeyInline()">Validate &
+                        Save</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <!-- PRIME PRO Details -->
+    <div class="premium-detail" id="prime-detail">
+        <p class="detail-text">Deep research with premium paid models</p>
+        <p class="detail-limit">3 queries remaining today</p>
+
+        <!-- PRIME PRO Subscription Hint -->
+        <div class="subscription-hint">
+            <i class="fas fa-crown"></i>
+            <span>Upgrade to unlock premium models and advanced features</span>
+        </div>
+    </div>
+
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Council Config Sheet -->
+    <div class="bottom-sheet" id="council-sheet">
+        <div class="sheet-backdrop" onclick="closeCouncilSheet()"></div>
+        <div class="sheet-content tall">
+            <div class="sheet-handle"></div>
+            <div class="sheet-header-row">
+                <button class="sheet-back-btn" onclick="closeCouncilSheet()"><i class="fas fa-arrow-left"></i></button>
+                <h3 class="sheet-title">Configure Council</h3>
+            </div>
+            <p class="sheet-subtitle">Select council members and chairman</p>
+
+            <!-- Council Members Group -->
+            <div class="council-group">
+                <div class="group-header">
+                    <h4 class="group-title">Council Members</h4>
+                    <span class="group-count">4 members</span>
+                </div>
+
+                <!-- Council Members Preview -->
+                <div class="members-preview">
+                    <div class="member-slot" id="member-slot-1">
+                        <span class="slot-name">Gemini</span>
+                    </div>
+                    <div class="member-slot" id="member-slot-2">
+                        <span class="slot-name">DeepSeek</span>
+                    </div>
+                    <div class="member-slot" id="member-slot-3">
+                        <span class="slot-name">Empty</span>
+                    </div>
+                    <div class="member-slot" id="member-slot-4">
+                        <span class="slot-name">Empty</span>
+                    </div>
+                </div>
+
+                <!-- Council Models Dropdown -->
+                <div class="models-dropdown">
+                    <div class="dropdown-label">
+                        <span>Select models</span>
+                        <button class="add-custom-btn" onclick="openCustomModelInput()" title="Add custom model">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+
+                    <!-- Custom Model Input (Hidden by default) -->
+                    <div class="custom-model-input" id="custom-model-input" style="display: none;">
+                        <input type="text" class="custom-model-field" id="custom-model-code"
+                            placeholder="e.g., openai/gpt-4-turbo">
+                        <button class="custom-add-btn" onclick="addCustomModel()">Add</button>
+                        <button class="custom-cancel-btn" onclick="closeCustomModelInput()">×</button>
+                    </div>
+                    <!-- Council Models (dynamically populated from data.json) -->
+                    <div class="models-list" id="council-models-list"></div>
+                </div>
+            </div>
+
+            <!-- Chairman Model Group -->
+            <div class="council-group">
+                <div class="group-header">
+                    <h4 class="group-title">Chairman Model</h4>
+                    <span class="group-desc">Synthesizes final answer</span>
+                </div>
+
+                <!-- Chairman Preview -->
+                <div class="chairman-preview">
+                    <span class="chairman-label">Selected:</span>
+                    <span class="chairman-name" id="chairman-name">Gemini 2.0 Flash</span>
+                </div>
+
+                <!-- Chairman Models Dropdown (dynamically populated from data.json) -->
+                <div class="models-dropdown">
+                    <div class="dropdown-label">Choose chairman</div>
+                    <div class="models-list" id="chairman-models-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+
+    <!-- New Collect Modal -->
+    <div class="modal" id="new-collect-modal">
+        <div class="modal-backdrop" onclick="closeNewCollectModal()"></div>
+        <div class="modal-content new-collect-modal">
+            <div class="modal-header-bar">
+                <button class="icon-btn" onclick="closeNewCollectModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+                <h2 class="modal-header-title">New collect</h2>
+                <div style="width: 40px;"></div>
+            </div>
+
+            <div class="new-collect-form">
+                <!-- Title & Icon Group -->
+                <div class="form-group title-icon-group">
+                    <button class="icon-selector-btn" onclick="openEmojiPicker()">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                    <input type="text" class="form-input" placeholder="Title" id="collect-title-input">
+                </div>
+
+                <!-- Description Input -->
+                <div class="form-group">
+                    <textarea class="form-input" placeholder="Description (Optional)" rows="3"
+                        id="collect-description-input"></textarea>
+                </div>
+
+                <!-- Privacy Options -->
+                <div class="form-group">
+                    <label class="form-label">Privacy</label>
+                    <div class="privacy-options">
+                        <label class="privacy-option">
+                            <div class="privacy-info">
+                                <i class="fas fa-lock"></i>
+                                <div>
+                                    <span class="privacy-name">Secret</span>
+                                    <p class="privacy-desc">Only contributors can view this</p>
+                                </div>
+                            </div>
+                            <input type="radio" name="collect-privacy" value="secret">
+                            <span class="radio-mark"></span>
+                        </label>
+                        <label class="privacy-option active">
+                            <div class="privacy-info">
+                                <i class="fas fa-share-alt"></i>
+                                <div>
+                                    <span class="privacy-name">Shareable</span>
+                                    <p class="privacy-desc">Anyone with the link can view this</p>
+                                </div>
+                            </div>
+                            <input type="radio" name="collect-privacy" value="shareable" checked>
+                            <span class="radio-mark"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Create Button -->
+                <button class="create-collect-btn" onclick="createNewCollect()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Dropdown Menu -->
+    <div id="dropdown-backdrop" class="dropdown-backdrop" onclick="closeDropdown()"></div>
+    <div id="global-dropdown" class="dropdown-menu"></div>
+
+    <script src="index.js"></script>
+</body>
+
+</html>
