@@ -2,10 +2,20 @@
 
 import json
 import os
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from .config import DATA_DIR
+
+
+def validate_conversation_id(conversation_id: str):
+    """
+    Validate that the conversation ID is safe (alphanumeric and hyphens only).
+    Raises ValueError if invalid.
+    """
+    if not re.match(r'^[a-zA-Z0-9-]+$', conversation_id):
+        raise ValueError(f"Invalid conversation ID: {conversation_id}")
 
 
 def ensure_data_dir():
@@ -15,6 +25,7 @@ def ensure_data_dir():
 
 def get_conversation_path(conversation_id: str) -> str:
     """Get the file path for a conversation."""
+    validate_conversation_id(conversation_id)
     return os.path.join(DATA_DIR, f"{conversation_id}.json")
 
 
@@ -55,7 +66,10 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Conversation dict or None if not found
     """
-    path = get_conversation_path(conversation_id)
+    try:
+        path = get_conversation_path(conversation_id)
+    except ValueError:
+        return None
 
     if not os.path.exists(path):
         return None
