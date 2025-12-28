@@ -5,21 +5,23 @@
 
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { Conversation, ConversationMetadata, Message, AggregateRanking } from './types';
 
 const CONVERSATIONS_KEY = '@llm_council_conversations';
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 
-// SecureStore helper that falls back to AsyncStorage on web
-const secureStorage = {
+/**
+ * Helper to manage the API key securely.
+ * The rest of the app state (conversations) is stored in AsyncStorage
+ * because it's too large for SecureStore.
+ */
+const apiKeyStorage = {
   async setItem(key: string, value: string): Promise<void> {
     if (Platform.OS === 'web') {
-      // Use AsyncStorage on web (less secure, but works)
       await AsyncStorage.setItem(`@secure_${key}`, value);
     } else {
-      // Use SecureStore on native
-      const SecureStore = await import('expo-secure-store');
       await SecureStore.setItemAsync(key, value);
     }
   },
@@ -27,7 +29,6 @@ const secureStorage = {
     if (Platform.OS === 'web') {
       return await AsyncStorage.getItem(`@secure_${key}`);
     } else {
-      const SecureStore = await import('expo-secure-store');
       return await SecureStore.getItemAsync(key);
     }
   },
@@ -35,7 +36,6 @@ const secureStorage = {
     if (Platform.OS === 'web') {
       await AsyncStorage.removeItem(`@secure_${key}`);
     } else {
-      const SecureStore = await import('expo-secure-store');
       await SecureStore.deleteItemAsync(key);
     }
   },
@@ -176,21 +176,21 @@ export const useStore = create<AppState>((set, get) => ({
 
     // API Key management using SecureStore (or AsyncStorage on web)
     saveApiKey: async (key: string) => {
-        await secureStorage.setItem(API_KEY_SECURE_KEY, key);
+        await apiKeyStorage.setItem(API_KEY_SECURE_KEY, key);
         set({ hasApiKey: true });
     },
 
     loadApiKey: async () => {
-        return await secureStorage.getItem(API_KEY_SECURE_KEY);
+        return await apiKeyStorage.getItem(API_KEY_SECURE_KEY);
     },
 
     clearApiKey: async () => {
-        await secureStorage.deleteItem(API_KEY_SECURE_KEY);
+        await apiKeyStorage.deleteItem(API_KEY_SECURE_KEY);
         set({ hasApiKey: false });
     },
 
     checkApiKeyExists: async () => {
-        const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
+        const key = await apiKeyStorage.getItem(API_KEY_SECURE_KEY);
         set({ hasApiKey: !!key });
     },
 }));

@@ -8,9 +8,11 @@ import type {
     ConversationMetadata,
     SendMessageResponse,
 } from './types';
+import NetInfo from '@react-native-community/netinfo';
+import Toast from 'react-native-toast-message';
 
 // Backend URL - change for production
-const API_BASE_URL = 'http://localhost:8001';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
 
 /**
  * Generic fetch wrapper with error handling.
@@ -19,6 +21,16 @@ async function fetchApi<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
+    const state = await NetInfo.fetch();
+    if (!state.isConnected) {
+        Toast.show({
+            type: 'error',
+            text1: 'No Internet Connection',
+            text2: 'Please check your network settings.',
+        });
+        throw new Error('No Internet Connection');
+    }
+
     const url = `${API_BASE_URL}${endpoint}`;
 
     const response = await fetch(url, {

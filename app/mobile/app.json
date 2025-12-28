@@ -25,6 +25,11 @@
       "edgeToEdgeEnabled": true,
       "package": "com.llmcouncil.app"
     },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"

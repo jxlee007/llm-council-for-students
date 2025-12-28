@@ -11,6 +11,7 @@ import asyncio
 
 from . import storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from . import razorpay_service
 
 app = FastAPI(title="LLM Council API")
 
@@ -39,6 +40,18 @@ class SendMessageRequest(BaseModel):
     content: str
 
 
+class SubscriptionRequest(BaseModel):
+    """Request to create a subscription."""
+    plan_id: str
+
+
+class VerifyPaymentRequest(BaseModel):
+    """Request to verify payment signature."""
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
+
+
 class ConversationMetadata(BaseModel):
     """Conversation metadata for list view."""
     id: str
@@ -59,6 +72,38 @@ class Conversation(BaseModel):
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
+
+
+@app.get("/api/plans")
+async def get_plans():
+    """Get available subscription plans."""
+    return razorpay_service.get_plans()
+
+
+@app.post("/api/subscriptions")
+async def create_subscription(request: SubscriptionRequest):
+    """Create a subscription order."""
+    try:
+        return razorpay_service.create_subscription(request.plan_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/verify-payment")
+async def verify_payment(request: VerifyPaymentRequest):
+    """Verify payment signature."""
+    is_valid = razorpay_service.verify_payment_signature(
+        request.razorpay_order_id,
+        request.razorpay_payment_id,
+        request.razorpay_signature
+    )
+
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="Invalid payment signature")
+
+    return {"status": "success", "verified": True}
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])

@@ -7,6 +7,7 @@ import {
     Platform,
     ActivityIndicator,
 } from "react-native";
+import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useStore, loadConversationFromStorage } from "../../../lib/store";
 import { getConversation, sendMessage } from "../../../lib/api";
@@ -54,7 +55,11 @@ export default function ChatScreen() {
                 try {
                     conversation = await getConversation(id);
                 } catch (error) {
-                    console.error("Failed to load conversation:", error);
+                    Toast.show({
+                        type: 'error',
+                        text1: 'Error',
+                        text2: 'Failed to load conversation',
+                    });
                 }
             }
 
@@ -132,8 +137,11 @@ export default function ChatScreen() {
                 }
             }
         } catch (error) {
-            console.error("Failed to send message:", error);
-            // TODO: Show error toast and allow retry
+            Toast.show({
+                type: 'error',
+                text1: 'Message Failed',
+                text2: error instanceof Error ? error.message : 'Unknown error',
+            });
             setPendingResponse(null);
         } finally {
             setIsProcessing(false);
