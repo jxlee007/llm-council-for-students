@@ -3,6 +3,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { useStore } from "../lib/store";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 /**
  * Root layout for the app.
@@ -21,7 +22,7 @@ export default function RootLayout() {
     }, []);
 
     return (
-        <>
+        <ErrorBoundary>
             <StatusBar style="auto" />
             <Stack
                 screenOptions={{
@@ -41,6 +42,6 @@ export default function RootLayout() {
                     }}
                 />
             </Stack>
-        </>
+        </ErrorBoundary>
     );
 }
