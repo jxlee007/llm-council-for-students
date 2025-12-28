@@ -1,4 +1,4 @@
-"""JSON-based storage for conversations."""
+"""JSON-based storage for conversations, with Convex adapter support."""
 
 import json
 import os
@@ -7,15 +7,33 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from .config import DATA_DIR
+import sys
 
+# Determine storage backend
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "file")
+
+# Import Convex client if needed
+# Note: We import it conditionally, but for testing (mocking) we might want it available in the namespace.
+# However, if 'convex' package is missing, we shouldn't fail unless backend is convex.
+convex_client = None
+if STORAGE_BACKEND == "convex":
+    try:
+        from . import convex_client
+    except ImportError:
+        if "unittest" not in sys.modules:
+            print("Warning: convex module not found but STORAGE_BACKEND=convex")
 
 def validate_conversation_id(conversation_id: str):
     """
     Validate that the conversation ID is safe (alphanumeric and hyphens only).
     Raises ValueError if invalid.
     """
-    if not re.match(r'^[a-zA-Z0-9-]+$', conversation_id):
-        raise ValueError(f"Invalid conversation ID: {conversation_id}")
+    # Convex IDs can contain other characters?
+    # Usually they are safe strings.
+    # We'll keep this check for file storage.
+    if STORAGE_BACKEND == "file":
+        if not re.match(r'^[a-zA-Z0-9-]+$', conversation_id):
+            raise ValueError(f"Invalid conversation ID: {conversation_id}")
 
 
 def ensure_data_dir():
@@ -34,11 +52,14 @@ def create_conversation(conversation_id: str) -> Dict[str, Any]:
     Create a new conversation.
 
     Args:
-        conversation_id: Unique identifier for the conversation
+        conversation_id: Unique identifier for the conversation (used for file storage)
 
     Returns:
         New conversation dict
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.create_conversation(conversation_id)
+
     ensure_data_dir()
 
     conversation = {
@@ -66,6 +87,9 @@ def get_conversation(conversation_id: str) -> Optional[Dict[str, Any]]:
     Returns:
         Conversation dict or None if not found
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.get_conversation(conversation_id)
+
     try:
         path = get_conversation_path(conversation_id)
     except ValueError:
@@ -85,6 +109,14 @@ def save_conversation(conversation: Dict[str, Any]):
     Args:
         conversation: Conversation dict to save
     """
+    if STORAGE_BACKEND == "convex":
+        # Convex saves incrementally via add_message,
+        # but if we needed to save the whole object:
+        # Currently not supported/needed by the adapter pattern
+        # as the individual update methods handle persistence.
+        # This function is mostly a helper for the file-based approach.
+        return
+
     ensure_data_dir()
 
     path = get_conversation_path(conversation['id'])
@@ -99,6 +131,9 @@ def list_conversations() -> List[Dict[str, Any]]:
     Returns:
         List of conversation metadata dicts
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.list_conversations()
+
     ensure_data_dir()
 
     conversations = []
@@ -129,6 +164,9 @@ def add_user_message(conversation_id: str, content: str):
         conversation_id: Conversation identifier
         content: User message content
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.add_user_message(conversation_id, content)
+
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
@@ -156,6 +194,9 @@ def add_assistant_message(
         stage2: List of model rankings
         stage3: Final synthesized response
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.add_assistant_message(conversation_id, stage1, stage2, stage3)
+
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")
@@ -178,6 +219,9 @@ def update_conversation_title(conversation_id: str, title: str):
         conversation_id: Conversation identifier
         title: New title for the conversation
     """
+    if STORAGE_BACKEND == "convex" and convex_client:
+        return convex_client.update_conversation_title(conversation_id, title)
+
     conversation = get_conversation(conversation_id)
     if conversation is None:
         raise ValueError(f"Conversation {conversation_id} not found")

@@ -1,16 +1,22 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, Switch } from "react-native";
-import { CheckCircle, Trash2, Lightbulb, Info } from "lucide-react-native";
+import { CheckCircle, Trash2, Lightbulb, Info, LogOut, User } from "lucide-react-native";
 import { useStore } from "../../lib/store";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 
 /**
  * Settings screen for app configuration.
- * Includes BYOK API key management and other preferences.
+ * Includes Authentication, BYOK API key management and other preferences.
  */
 export default function SettingsScreen() {
     const { hasApiKey, saveApiKey, clearApiKey } = useStore();
     const [apiKey, setApiKey] = useState("");
     const [showApiKey, setShowApiKey] = useState(false);
+
+    const { signOut, isSignedIn } = useAuth();
+    const { user } = useUser();
+    const router = useRouter();
 
     const handleSaveApiKey = async () => {
         if (!apiKey.trim()) {
@@ -41,8 +47,74 @@ export default function SettingsScreen() {
         );
     };
 
+    const handleSignOut = () => {
+        Alert.alert(
+            "Sign Out",
+            "Are you sure you want to sign out?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Sign Out",
+                    style: "destructive",
+                    onPress: async () => {
+                        await signOut();
+                    },
+                },
+            ]
+        );
+    };
+
     return (
         <View className="flex-1 bg-gray-50">
+            {/* Account Section */}
+            <View className="mt-6 mx-4">
+                <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    Account
+                </Text>
+                <View className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+                    {isSignedIn ? (
+                        <View className="p-4">
+                            <View className="flex-row items-center mb-4">
+                                <View className="h-10 w-10 bg-indigo-100 rounded-full items-center justify-center mr-3">
+                                    <Text className="text-indigo-600 font-bold text-lg">
+                                        {user?.firstName?.charAt(0) || user?.emailAddresses[0]?.emailAddress?.charAt(0) || "U"}
+                                    </Text>
+                                </View>
+                                <View>
+                                    <Text className="text-base font-semibold text-gray-900">
+                                        {user?.fullName || "User"}
+                                    </Text>
+                                    <Text className="text-sm text-gray-500">
+                                        {user?.primaryEmailAddress?.emailAddress}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                onPress={handleSignOut}
+                                className="p-3 bg-red-50 rounded-lg flex-row items-center justify-center"
+                            >
+                                <LogOut size={18} color="#dc2626" className="mr-2" />
+                                <Text className="text-red-600 font-medium">Sign Out</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View className="p-4">
+                            <Text className="text-sm text-gray-600 mb-4">
+                                Sign in to sync your conversation history across devices.
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => router.push("/(auth)/sign-in")}
+                                className="bg-black py-3 rounded-lg flex-row items-center justify-center"
+                            >
+                                <User size={18} color="#ffffff" className="mr-2" />
+                                <Text className="text-white font-semibold">Sign In / Sign Up</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
+            </View>
+
             {/* BYOK Section */}
             <View className="mt-6 mx-4">
                 <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
