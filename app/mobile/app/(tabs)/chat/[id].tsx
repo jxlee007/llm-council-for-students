@@ -6,6 +6,8 @@ import {
     KeyboardAvoidingView,
     Platform,
     ActivityIndicator,
+    TouchableWithoutFeedback,
+    Keyboard,
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useStore, loadConversationFromStorage } from "../../../lib/store";
@@ -220,39 +222,43 @@ export default function ChatScreen() {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={90}
         >
-            {error && <Banner message={error} onDismiss={() => setError(null)} />}
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <View className="flex-1">
+                    {error && <Banner message={error} onDismiss={() => setError(null)} />}
 
-            <FlatList
-                ref={flatListRef}
-                data={getDisplayMessages()}
-                keyExtractor={(_, index) => index.toString()}
-                renderItem={renderMessage}
-                contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
-                ListEmptyComponent={
-                    <View className="flex-1 items-center justify-center py-20">
-                        <Text className="text-5xl mb-4">🎓</Text>
-                        <Text className="text-gray-500 text-center">
-                            Ask a question to get answers from the LLM Council
-                        </Text>
-                    </View>
-                }
-            />
+                    <FlatList
+                        ref={flatListRef}
+                        data={getDisplayMessages()}
+                        keyExtractor={(_, index) => index.toString()}
+                        renderItem={renderMessage}
+                        contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+                        ListEmptyComponent={
+                            <View className="flex-1 items-center justify-center py-20">
+                                <Text className="text-5xl mb-4">🎓</Text>
+                                <Text className="text-gray-500 text-center">
+                                    Ask a question to get answers from the LLM Council
+                                </Text>
+                            </View>
+                        }
+                    />
 
-            {/* Processing indicator */}
-            {isProcessing && (
-                <View className="px-4 py-2 bg-primary-50 border-t border-primary-100">
-                    <View className="flex-row items-center">
-                        <ActivityIndicator size="small" color="#4f46e5" />
-                        <Text className="ml-2 text-primary-700 text-sm">
-                            {currentStage === 1 && "Stage 1: Collecting responses..."}
-                            {currentStage === 2 && "Stage 2: Council is deliberating..."}
-                            {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}
-                        </Text>
-                    </View>
+                    {/* Processing indicator */}
+                    {isProcessing && (
+                        <View className="px-4 py-2 bg-primary-50 border-t border-primary-100">
+                            <View className="flex-row items-center">
+                                <ActivityIndicator size="small" color="#4f46e5" />
+                                <Text className="ml-2 text-primary-700 text-sm">
+                                    {currentStage === 1 && "Stage 1: Collecting responses..."}
+                                    {currentStage === 2 && "Stage 2: Council is deliberating..."}
+                                    {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    <ChatInput onSend={handleSendMessage} disabled={isProcessing} />
                 </View>
-            )}
-
-            <ChatInput onSend={handleSendMessage} disabled={isProcessing} />
+            </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
     );
 }
