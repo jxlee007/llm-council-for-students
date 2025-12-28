@@ -7,10 +7,12 @@ import type {
     Conversation,
     ConversationMetadata,
     SendMessageResponse,
+    Model,
 } from './types';
+import * as Network from 'expo-network';
 
-// Backend URL - change for production
-const API_BASE_URL = 'http://localhost:8001';
+// Backend URL - uses env var for production, fallback to localhost
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
 
 /**
  * Generic fetch wrapper with error handling.
@@ -21,20 +23,47 @@ async function fetchApi<T>(
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
-    const response = await fetch(url, {
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-        ...options,
-    });
-
-    if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`API Error: ${response.status} - ${error}`);
+    // Check network connectivity
+    const networkState = await Network.getNetworkStateAsync();
+    if (networkState.isConnected === false) {
+        throw new Error('No Internet Connection');
     }
 
-    return response.json();
+    // Add 60s timeout
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 60000);
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+            signal: controller.signal,
+            ...options,
+        });
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`API Error: ${response.status} - ${error}`);
+        }
+
+        return response.json();
+    } catch (error: any) {
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out');
+        }
+        throw error;
+    } finally {
+        clearTimeout(id);
+    }
+}
+
+/**
+ * Get list of free models from backend.
+ */
+export async function getFreeModels(): Promise<Model[]> {
+    return fetchApi<Model[]>('/api/models/free');
 }
 
 /**
@@ -70,7 +99,9 @@ export async function getConversation(conversationId: string): Promise<Conversat
 export async function sendMessage(
     conversationId: string,
     content: string,
-    apiKey?: string | null
+    apiKey?: string | null,
+    councilMembers?: string[],
+    chairmanModel?: string | null
 ): Promise<SendMessageResponse> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -81,12 +112,20 @@ export async function sendMessage(
         headers['X-OpenRouter-Key'] = apiKey;
     }
 
+    const body: any = { content };
+    if (councilMembers && councilMembers.length > 0) {
+        body.council_members = councilMembers;
+    }
+    if (chairmanModel) {
+        body.chairman_model = chairmanModel;
+    }
+
     return fetchApi<SendMessageResponse>(
         `/api/conversations/${conversationId}/message`,
         {
             method: 'POST',
             headers,
-            body: JSON.stringify({ content }),
+            body: JSON.stringify(body),
         }
     );
 }
@@ -97,12 +136,22 @@ export async function sendMessage(
  * @param conversationId - The conversation ID
  * @param content - The message content
  * @param apiKey - Optional OpenRouter API key for BYOK
+ * @param councilMembers - Optional list of models for the council
+ * @param chairmanModel - Optional model for the chairman
  */
 export async function* sendMessageStream(
     conversationId: string,
     content: string,
-    apiKey?: string | null
+    apiKey?: string | null,
+    councilMembers?: string[],
+    chairmanModel?: string | null
 ): AsyncGenerator<{ type: string; data?: unknown; message?: string; metadata?: unknown }> {
+    // Check network connectivity first
+    const networkState = await Network.getNetworkStateAsync();
+    if (networkState.isConnected === false) {
+        throw new Error('No Internet Connection');
+    }
+
     const url = `${API_BASE_URL}/api/conversations/${conversationId}/message/stream`;
 
     const headers: Record<string, string> = {
@@ -114,45 +163,69 @@ export async function* sendMessageStream(
         headers['X-OpenRouter-Key'] = apiKey;
     }
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ content }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Stream Error: ${response.status}`);
+    const body: any = { content };
+    if (councilMembers && councilMembers.length > 0) {
+        body.council_members = councilMembers;
+    }
+    if (chairmanModel) {
+        body.chairman_model = chairmanModel;
     }
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-        throw new Error('No response body');
-    }
+    // Add 60s timeout for stream start
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 60000);
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+            signal: controller.signal,
+        });
 
-    while (true) {
-        const { done, value } = await reader.read();
+        clearTimeout(id); // Clear timeout once response starts
 
-        if (done) break;
+        if (!response.ok) {
+            throw new Error(`Stream Error: ${response.status}`);
+        }
 
-        buffer += decoder.decode(value, { stream: true });
+        const reader = response.body?.getReader();
+        if (!reader) {
+            throw new Error('No response body');
+        }
 
-        // Parse SSE events from buffer
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        for (const line of lines) {
-            if (line.startsWith('data: ')) {
-                try {
-                    const data = JSON.parse(line.slice(6));
-                    yield data;
-                } catch {
-                    // Skip malformed JSON
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            // Parse SSE events from buffer
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        yield data;
+                    } catch {
+                        // Skip malformed JSON
+                    }
                 }
             }
         }
+    } catch (error: any) {
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out');
+        }
+        throw error;
+    } finally {
+        clearTimeout(id);
     }
 }
 

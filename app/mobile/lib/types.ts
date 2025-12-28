@@ -3,6 +3,17 @@
  * Matches the backend response structure from FastAPI.
  */
 
+/** OpenRouter Model */
+export interface Model {
+    id: string;
+    name: string;
+    context_length: number;
+    pricing: {
+        prompt: string;
+        completion: string;
+    };
+}
+
 /** Stage 1: Individual model response */
 export interface Stage1Response {
     model: string;

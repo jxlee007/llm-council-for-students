@@ -10,6 +10,8 @@ import type { Conversation, ConversationMetadata, Message, AggregateRanking } fr
 
 const CONVERSATIONS_KEY = '@llm_council_conversations';
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
+const COUNCIL_MODELS_KEY = '@llm_council_models';
+const CHAIRMAN_MODEL_KEY = '@llm_council_chairman';
 
 // SecureStore helper that falls back to AsyncStorage on web
 const secureStorage = {
@@ -54,6 +56,8 @@ interface AppState {
 
     // Settings
     hasApiKey: boolean;
+    councilModels: string[];
+    chairmanModel: string | null;
 
     // Actions
     loadConversationsFromStorage: () => Promise<void>;
@@ -65,6 +69,8 @@ interface AppState {
     setIsProcessing: (value: boolean) => void;
     setCurrentStage: (stage: 0 | 1 | 2 | 3) => void;
     setAggregateRankings: (rankings: AggregateRanking[]) => void;
+    setCouncilModels: (models: string[]) => void;
+    setChairmanModel: (model: string | null) => void;
 
     // API Key management
     saveApiKey: (key: string) => Promise<void>;
@@ -82,6 +88,8 @@ export const useStore = create<AppState>((set, get) => ({
     currentStage: 0,
     aggregateRankings: [],
     hasApiKey: false,
+    councilModels: [],
+    chairmanModel: null,
 
     // Load conversations from AsyncStorage
     loadConversationsFromStorage: async () => {
@@ -92,6 +100,18 @@ export const useStore = create<AppState>((set, get) => ({
                 const conversations: ConversationMetadata[] = JSON.parse(data);
                 set({ conversationsList: conversations });
             }
+
+            // Load council config
+            const councilData = await AsyncStorage.getItem(COUNCIL_MODELS_KEY);
+            if (councilData) {
+                set({ councilModels: JSON.parse(councilData) });
+            }
+
+            const chairmanData = await AsyncStorage.getItem(CHAIRMAN_MODEL_KEY);
+            if (chairmanData) {
+                set({ chairmanModel: chairmanData });
+            }
+
         } catch (error) {
             console.error('Failed to load conversations:', error);
         } finally {
@@ -173,6 +193,20 @@ export const useStore = create<AppState>((set, get) => ({
     setCurrentStage: (stage) => set({ currentStage: stage }),
 
     setAggregateRankings: (rankings) => set({ aggregateRankings: rankings }),
+
+    setCouncilModels: (models) => {
+        set({ councilModels: models });
+        AsyncStorage.setItem(COUNCIL_MODELS_KEY, JSON.stringify(models));
+    },
+
+    setChairmanModel: (model) => {
+        set({ chairmanModel: model });
+        if (model) {
+            AsyncStorage.setItem(CHAIRMAN_MODEL_KEY, model);
+        } else {
+            AsyncStorage.removeItem(CHAIRMAN_MODEL_KEY);
+        }
+    },
 
     // API Key management using SecureStore (or AsyncStorage on web)
     saveApiKey: async (key: string) => {

@@ -9,10 +9,12 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { useStore, loadConversationFromStorage } from "../../../lib/store";
-import { getConversation, sendMessage } from "../../../lib/api";
+import { getConversation, sendMessageStream } from "../../../lib/api";
 import type { Message, AssistantMessage, UserMessage, AggregateRanking } from "../../../lib/types";
 import ChatInput from "../../../components/ChatInput";
 import MessageBubble from "../../../components/MessageBubble";
+import { Banner } from "../../../components/Banner";
+import { FadeInView } from "../../../components/FadeInView";
 
 /**
  * Main chat screen for a conversation.
@@ -34,10 +36,13 @@ export default function ChatScreen() {
         setAggregateRankings,
         saveConversationToStorage,
         updateConversationTitle,
+        councilModels,
+        chairmanModel
     } = useStore();
 
     const [isLoading, setIsLoading] = useState(true);
     const [pendingResponse, setPendingResponse] = useState<Partial<AssistantMessage> | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     // Load conversation on mount
     useEffect(() => {
@@ -85,7 +90,7 @@ export default function ChatScreen() {
         }
     }, [currentConversation?.messages.length, pendingResponse]);
 
-    // Send message handler
+    // Send message handler with Streaming
     const handleSendMessage = async (content: string) => {
         if (!id || !currentConversation) return;
 
@@ -96,45 +101,80 @@ export default function ChatScreen() {
         // Start processing
         setIsProcessing(true);
         setCurrentStage(1);
-        setPendingResponse({ role: "assistant" });
+        setPendingResponse({ role: "assistant", stage1: [], stage2: [], stage3: { model: "", response: "" } });
+        setError(null);
 
         try {
             // Load API key from store for BYOK
             const { loadApiKey } = useStore.getState();
             const apiKey = await loadApiKey();
 
-            // Send to backend with API key
-            const response = await sendMessage(id, content, apiKey);
+            // Stream from backend
+            const stream = sendMessageStream(
+                id,
+                content,
+                apiKey,
+                councilModels.length > 0 ? councilModels : undefined,
+                chairmanModel
+            );
 
-            // Build assistant message
+            let stage1_results: any[] = [];
+            let stage2_results: any[] = [];
+            let stage3_result: any = { model: "", response: "" };
+            let metadata: any = {};
+
+            for await (const event of stream) {
+                if (event.type === 'error') {
+                    throw new Error(event.message || 'Stream error');
+                }
+
+                if (event.type === 'stage1_start') setCurrentStage(1);
+                if (event.type === 'stage2_start') setCurrentStage(2);
+                if (event.type === 'stage3_start') setCurrentStage(3);
+
+                if (event.type === 'stage1_complete') {
+                    stage1_results = event.data as any[];
+                    setPendingResponse(prev => ({ ...prev, stage1: stage1_results }));
+                }
+
+                if (event.type === 'stage2_complete') {
+                    stage2_results = event.data as any[];
+                    metadata = event.metadata || {};
+                    setPendingResponse(prev => ({ ...prev, stage2: stage2_results }));
+                    if (metadata.aggregate_rankings) {
+                        setAggregateRankings(metadata.aggregate_rankings);
+                    }
+                }
+
+                if (event.type === 'stage3_complete') {
+                    stage3_result = event.data as any;
+                    setPendingResponse(prev => ({ ...prev, stage3: stage3_result }));
+                }
+
+                if (event.type === 'title_complete') {
+                    const titleData = event.data as any;
+                    if (titleData?.title) {
+                        updateConversationTitle(id, titleData.title);
+                    }
+                }
+            }
+
+            // Build final assistant message
             const assistantMessage: AssistantMessage = {
                 role: "assistant",
-                stage1: response.stage1,
-                stage2: response.stage2,
-                stage3: response.stage3,
+                stage1: stage1_results,
+                stage2: stage2_results,
+                stage3: stage3_result,
             };
 
-            // Update state
-            setAggregateRankings(response.metadata.aggregate_rankings);
             addMessageToCurrentConversation(assistantMessage);
             setPendingResponse(null);
 
-            // Update title if this was the first message
-            if (currentConversation.messages.length <= 1) {
-                // The backend should have updated the title, refresh conversation
-                try {
-                    const updated = await getConversation(id);
-                    if (updated.title !== currentConversation.title) {
-                        updateConversationTitle(id, updated.title);
-                    }
-                } catch {
-                    // Ignore title update failures
-                }
-            }
-        } catch (error) {
-            console.error("Failed to send message:", error);
-            // TODO: Show error toast and allow retry
+        } catch (err: any) {
+            console.error("Failed to send message:", err);
+            setError(err.message || "Connection failed");
             setPendingResponse(null);
+            // Revert state if needed or just show error
         } finally {
             setIsProcessing(false);
             setCurrentStage(0);
@@ -143,7 +183,9 @@ export default function ChatScreen() {
 
     // Render message item
     const renderMessage = ({ item, index }: { item: Message; index: number }) => (
-        <MessageBubble message={item} key={index} />
+        <FadeInView delay={index > 0 ? 0 : 300}>
+            <MessageBubble message={item} />
+        </FadeInView>
     );
 
     // Get messages to display (including pending response)
@@ -178,6 +220,8 @@ export default function ChatScreen() {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={90}
         >
+            {error && <Banner message={error} onDismiss={() => setError(null)} />}
+
             <FlatList
                 ref={flatListRef}
                 data={getDisplayMessages()}
@@ -200,9 +244,9 @@ export default function ChatScreen() {
                     <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="#4f46e5" />
                         <Text className="ml-2 text-primary-700 text-sm">
-                            {currentStage === 1 && "Stage 1: Collecting model responses..."}
-                            {currentStage === 2 && "Stage 2: Models ranking each other..."}
-                            {currentStage === 3 && "Stage 3: Chairman synthesizing final answer..."}
+                            {currentStage === 1 && "Stage 1: Collecting responses..."}
+                            {currentStage === 2 && "Stage 2: Council is deliberating..."}
+                            {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}
                         </Text>
                     </View>
                 </View>
