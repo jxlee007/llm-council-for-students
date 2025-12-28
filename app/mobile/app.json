@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "LLM Council",
-    "slug": "llm-council",
+    "name": "LLM Council - For students",
+    "slug": "llm-council-consensus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

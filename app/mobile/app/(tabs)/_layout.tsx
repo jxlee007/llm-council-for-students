@@ -38,6 +38,17 @@ export default function TabLayout() {
                 }}
             />
             <Tabs.Screen
+                name="configure"
+                options={{
+                    title: "Council",
+                    tabBarIcon: ({ color }) => (
+                        <View className="items-center justify-center">
+                            <Text style={{ color, fontSize: 20 }}>👥</Text>
+                        </View>
+                    ),
+                }}
+            />
+            <Tabs.Screen
                 name="settings"
                 options={{
                     title: "Settings",

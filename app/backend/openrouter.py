@@ -88,3 +88,44 @@ async def query_models_parallel(
 
     # Map models to their responses
     return {model: response for model, response in zip(models, responses)}
+
+
+async def get_free_models() -> List[Dict[str, Any]]:
+    """
+    Fetch all available models from OpenRouter and filter for free ones.
+
+    Returns:
+        List of model objects
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get("https://openrouter.ai/api/v1/models")
+            response.raise_for_status()
+
+            data = response.json()
+            models_data = data.get('data', [])
+
+            free_models = []
+            for model in models_data:
+                pricing = model.get('pricing', {})
+                model_id = model.get('id', '')
+
+                # Check for zero pricing or specific free flag in ID
+                is_free = (
+                    (pricing.get('prompt') == '0' and pricing.get('completion') == '0') or
+                    ':free' in model_id
+                )
+
+                if is_free:
+                    free_models.append({
+                        'id': model_id,
+                        'name': model.get('name'),
+                        'context_length': model.get('context_length'),
+                        'pricing': pricing
+                    })
+
+            return free_models
+
+    except Exception as e:
+        print(f"Error fetching free models: {e}")
+        return []

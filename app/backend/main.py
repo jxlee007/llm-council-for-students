@@ -17,12 +17,7 @@ app = FastAPI(title="LLM Council API")
 # Enable CORS for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://localhost:8081",
-        "http://localhost:8082",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,6 +32,8 @@ class CreateConversationRequest(BaseModel):
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
     content: str
+    council_members: Optional[List[str]] = None
+    chairman_model: Optional[str] = None
 
 
 class ConversationMetadata(BaseModel):
@@ -59,6 +56,13 @@ class Conversation(BaseModel):
 async def root():
     """Health check endpoint."""
     return {"status": "ok", "service": "LLM Council API"}
+
+
+@app.get("/api/models/free")
+async def get_free_models_endpoint():
+    """Get list of available free models from OpenRouter."""
+    from .openrouter import get_free_models
+    return await get_free_models()
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
@@ -114,7 +118,10 @@ async def send_message(
 
     # Run the 3-stage council process with user's API key
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content, api_key=x_openrouter_key
+        request.content,
+        council_members=request.council_members,
+        chairman_model=request.chairman_model,
+        api_key=x_openrouter_key
     )
 
     # Add assistant message with all stages
@@ -157,8 +164,18 @@ async def send_message_stream(
     # Capture api_key for closure
     api_key = x_openrouter_key
 
+    # Use provided members or fallback to default in lower layers (run_full_council handles None, but individual stages don't)
+    # So we need to resolve it here for individual stage calls
+    from .config import COUNCIL_MODELS
+    council_members = request.council_members or COUNCIL_MODELS
+
     async def event_generator():
         try:
+            # Validate quorum
+            if len(council_members) < 2:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Council requires at least 2 members.'})}\n\n"
+                return
+
             # Add user message
             storage.add_user_message(conversation_id, request.content)
 
@@ -169,18 +186,30 @@ async def send_message_stream(
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content, api_key=api_key)
+            stage1_results = await stage1_collect_responses(request.content, council_members, api_key=api_key)
+
+            # Check quorum after response
+            if len(stage1_results) < 2:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Insufficient council quorum: fewer than 2 models responded.'})}\n\n"
+                return
+
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, api_key=api_key)
+            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, council_members, api_key=api_key)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, api_key=api_key)
+            stage3_result = await stage3_synthesize_final(
+                request.content,
+                stage1_results,
+                stage2_results,
+                chairman_model=request.chairman_model,
+                api_key=api_key
+            )
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
             # Wait for title generation if it was started
