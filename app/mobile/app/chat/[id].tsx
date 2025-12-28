@@ -10,19 +10,20 @@ import {
     Keyboard,
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
-import { useStore, loadConversationFromStorage } from "../../../lib/store";
-import { getConversation, sendMessageStream } from "../../../lib/api";
-import type { Message, AssistantMessage, UserMessage, AggregateRanking } from "../../../lib/types";
-import ChatInput from "../../../components/ChatInput";
-import MessageBubble from "../../../components/MessageBubble";
-import { Banner } from "../../../components/Banner";
-import { FadeInView } from "../../../components/FadeInView";
+import { MessageSquare } from "lucide-react-native";
+import { useStore, loadConversationFromStorage } from "../../lib/store";
+import { getConversation, sendMessage } from "../../lib/api";
+import type { Message, AssistantMessage, UserMessage, AggregateRanking } from "../../lib/types";
+import ChatInput from "../../components/ChatInput";
+import MessageBubble from "../../components/MessageBubble";
+import { Banner } from "../../components/Banner";
+import { FadeInView } from "../../components/FadeInView";
 
 /**
  * Main chat screen for a conversation.
  * Displays messages and handles the 3-stage council response.
  */
-export default function ChatScreen() {
+function ChatScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const navigation = useNavigation();
     const flatListRef = useRef<FlatList>(null);
@@ -92,7 +93,7 @@ export default function ChatScreen() {
         }
     }, [currentConversation?.messages.length, pendingResponse]);
 
-    // Send message handler with Streaming
+    // Send message handler (non-streaming for React Native compatibility)
     const handleSendMessage = async (content: string) => {
         if (!id || !currentConversation) return;
 
@@ -111,8 +112,8 @@ export default function ChatScreen() {
             const { loadApiKey } = useStore.getState();
             const apiKey = await loadApiKey();
 
-            // Stream from backend
-            const stream = sendMessageStream(
+            // Use non-streaming endpoint (React Native doesn't support streaming fetch)
+            const response = await sendMessage(
                 id,
                 content,
                 apiKey,
@@ -120,53 +121,35 @@ export default function ChatScreen() {
                 chairmanModel
             );
 
-            let stage1_results: any[] = [];
-            let stage2_results: any[] = [];
-            let stage3_result: any = { model: "", response: "" };
-            let metadata: any = {};
+            // Update stage indicators progressively for visual feedback
+            setCurrentStage(2);
+            setPendingResponse(prev => ({ ...prev, stage1: response.stage1 }));
+            
+            await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for UX
+            
+            setCurrentStage(3);
+            setPendingResponse(prev => ({ ...prev, stage2: response.stage2 }));
+            
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            setPendingResponse(prev => ({ ...prev, stage3: response.stage3 }));
 
-            for await (const event of stream) {
-                if (event.type === 'error') {
-                    throw new Error(event.message || 'Stream error');
-                }
+            // Handle aggregate rankings if present
+            if (response.metadata?.aggregate_rankings) {
+                setAggregateRankings(response.metadata.aggregate_rankings);
+            }
 
-                if (event.type === 'stage1_start') setCurrentStage(1);
-                if (event.type === 'stage2_start') setCurrentStage(2);
-                if (event.type === 'stage3_start') setCurrentStage(3);
-
-                if (event.type === 'stage1_complete') {
-                    stage1_results = event.data as any[];
-                    setPendingResponse(prev => ({ ...prev, stage1: stage1_results }));
-                }
-
-                if (event.type === 'stage2_complete') {
-                    stage2_results = event.data as any[];
-                    metadata = event.metadata || {};
-                    setPendingResponse(prev => ({ ...prev, stage2: stage2_results }));
-                    if (metadata.aggregate_rankings) {
-                        setAggregateRankings(metadata.aggregate_rankings);
-                    }
-                }
-
-                if (event.type === 'stage3_complete') {
-                    stage3_result = event.data as any;
-                    setPendingResponse(prev => ({ ...prev, stage3: stage3_result }));
-                }
-
-                if (event.type === 'title_complete') {
-                    const titleData = event.data as any;
-                    if (titleData?.title) {
-                        updateConversationTitle(id, titleData.title);
-                    }
-                }
+            // Handle title update
+            if ((response.metadata as any)?.title) {
+                updateConversationTitle(id, (response.metadata as any).title);
             }
 
             // Build final assistant message
             const assistantMessage: AssistantMessage = {
                 role: "assistant",
-                stage1: stage1_results,
-                stage2: stage2_results,
-                stage3: stage3_result,
+                stage1: response.stage1,
+                stage2: response.stage2,
+                stage3: response.stage3,
             };
 
             addMessageToCurrentConversation(assistantMessage);
@@ -176,7 +159,6 @@ export default function ChatScreen() {
             console.error("Failed to send message:", err);
             setError(err.message || "Connection failed");
             setPendingResponse(null);
-            // Revert state if needed or just show error
         } finally {
             setIsProcessing(false);
             setCurrentStage(0);
@@ -234,8 +216,8 @@ export default function ChatScreen() {
                         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
                         ListEmptyComponent={
                             <View className="flex-1 items-center justify-center py-20">
-                                <Text className="text-5xl mb-4">🎓</Text>
-                                <Text className="text-gray-500 text-center">
+                                <MessageSquare size={64} color="#d1d5db" />
+                                <Text className="text-gray-500 text-center mt-4">
                                     Ask a question to get answers from the LLM Council
                                 </Text>
                             </View>
@@ -262,3 +244,5 @@ export default function ChatScreen() {
         </KeyboardAvoidingView>
     );
 }
+
+export default ChatScreen;

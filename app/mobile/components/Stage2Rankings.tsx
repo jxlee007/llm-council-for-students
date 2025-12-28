@@ -1,4 +1,5 @@
 import { View, Text, ScrollView } from "react-native";
+import { Trophy } from "lucide-react-native";
 import type { Stage2Response } from "../lib/types";
 import { useStore } from "../lib/store";
 
@@ -32,28 +33,28 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
                     bg: "bg-yellow-100",
                     text: "text-yellow-800",
                     border: "border-yellow-300",
-                    emoji: "🥇",
+                    emoji: <Trophy size={20} color="#b45309" />,
                 };
             case 2:
                 return {
                     bg: "bg-gray-100",
                     text: "text-gray-700",
                     border: "border-gray-300",
-                    emoji: "🥈",
+                    emoji: <Trophy size={20} color="#4b5563" />,
                 };
             case 3:
                 return {
                     bg: "bg-amber-100",
                     text: "text-amber-800",
                     border: "border-amber-300",
-                    emoji: "🥉",
+                    emoji: <Trophy size={20} color="#d97706" />,
                 };
             default:
                 return {
                     bg: "bg-gray-50",
                     text: "text-gray-600",
                     border: "border-gray-200",
-                    emoji: `#${rank}`,
+                    emoji: <Text className="text-xs font-bold text-gray-400">#{rank}</Text>,
                 };
         }
     };
@@ -81,7 +82,7 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
                                 key={ranking.model}
                                 className={`flex-row items-center p-3 rounded-lg mb-2 border ${style.bg} ${style.border}`}
                             >
-                                <Text className="text-xl mr-3">{style.emoji}</Text>
+                                <View className="mr-3">{style.emoji}</View>
                                 <View className="flex-1">
                                     <Text className={`font-medium ${style.text}`}>
                                         {getModelShortName(ranking.model)}

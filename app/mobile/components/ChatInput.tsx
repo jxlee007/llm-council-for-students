@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, TextInput, TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { Paperclip, Send } from "lucide-react-native";
 
 interface ChatInputProps {
     onSend: (message: string) => void;
@@ -35,7 +36,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                     className="w-10 h-10 items-center justify-center mr-2"
                     activeOpacity={0.7}
                 >
-                    <Text className="text-xl">📎</Text>
+                    <Paperclip size={20} color="#6b7280" />
                 </TouchableOpacity>
 
                 {/* Text input */}
@@ -64,7 +65,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                     {disabled ? (
                         <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                        <Text className="text-white text-lg">↑</Text>
+                        <Send size={18} color="#fff" />
                     )}
                 </TouchableOpacity>
             </View>

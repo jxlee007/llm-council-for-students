@@ -14,10 +14,16 @@ from .council import run_full_council, generate_conversation_title, stage1_colle
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for local development
+# Enable CORS for production hardening
+origins = [
+    "http://localhost:8081",      # Expo Metro Bundler
+    "https://llmcouncil.com",     # Landing Page
+    "https://app.llmcouncil.com"  # Future Web App
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

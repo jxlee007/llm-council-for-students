@@ -8,6 +8,7 @@ import {
     ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Plus, MessageSquareQuote } from "lucide-react-native";
 import { useStore, loadConversationFromStorage } from "../../lib/store";
 import { createConversation, getConversations } from "../../lib/api";
 import type { ConversationMetadata } from "../../lib/types";
@@ -109,8 +110,8 @@ export default function ConversationListScreen() {
     // Empty state
     const EmptyState = () => (
         <View className="flex-1 items-center justify-center p-8">
-            <Text className="text-6xl mb-4">🎓</Text>
-            <Text className="text-xl font-bold text-gray-900 text-center">
+            <MessageSquareQuote size={64} color="#4f46e5" />
+            <Text className="text-xl font-bold text-gray-900 text-center mt-4">
                 Welcome to LLM Council
             </Text>
             <Text className="text-gray-500 text-center mt-2">
@@ -161,7 +162,7 @@ export default function ConversationListScreen() {
                     {creating ? (
                         <ActivityIndicator size="small" color="#fff" />
                     ) : (
-                        <Text className="text-white text-2xl">+</Text>
+                        <Plus color="#fff" size={24} />
                     )}
                 </TouchableOpacity>
             )}

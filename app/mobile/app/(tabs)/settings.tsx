@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, Switch } from "react-native";
+import { CheckCircle, Trash2, Lightbulb, Info } from "lucide-react-native";
 import { useStore } from "../../lib/store";
 
 /**
@@ -61,14 +62,15 @@ export default function SettingsScreen() {
                         <View className="p-4">
                             <View className="flex-row items-center justify-between">
                                 <View className="flex-row items-center">
-                                    <Text className="text-2xl mr-2">✓</Text>
+                                    <CheckCircle size={24} color="#16a34a" className="mr-2" />
                                     <Text className="text-green-600 font-medium">API Key configured</Text>
                                 </View>
                                 <TouchableOpacity
                                     onPress={handleClearApiKey}
-                                    className="px-3 py-1 bg-red-100 rounded-lg"
+                                    className="p-2 bg-red-100 rounded-lg flex-row items-center"
                                 >
-                                    <Text className="text-red-600 text-sm font-medium">Remove</Text>
+                                    <Trash2 size={16} color="#dc2626" />
+                                    <Text className="text-red-600 text-sm font-medium ml-1">Remove</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -111,8 +113,11 @@ export default function SettingsScreen() {
                     About
                 </Text>
                 <View className="bg-white rounded-xl border border-gray-100 p-4">
-                    <Text className="text-base font-semibold text-gray-900">LLM Council</Text>
-                    <Text className="text-sm text-gray-500 mt-1">
+                    <View className="flex-row items-center mb-1">
+                        <Info size={18} color="#4f46e5" className="mr-2" />
+                        <Text className="text-base font-semibold text-gray-900">LLM Council</Text>
+                    </View>
+                    <Text className="text-sm text-gray-500">
                         Get answers from a council of AI models that work together to provide
                         the best response to your questions.
                     </Text>
@@ -123,9 +128,10 @@ export default function SettingsScreen() {
             </View>
 
             {/* Info Banner */}
-            <View className="mx-4 mt-6 bg-blue-50 rounded-xl p-4 border border-blue-100">
-                <Text className="text-sm text-blue-800">
-                    💡 <Text className="font-semibold">Tip:</Text> Add your OpenRouter API key
+            <View className="mx-4 mt-6 bg-blue-50 rounded-xl p-4 border border-blue-100 flex-row">
+                <Lightbulb size={20} color="#1e40af" className="mr-3 mt-0.5" />
+                <Text className="text-sm text-blue-800 flex-1">
+                    <Text className="font-semibold">Tip:</Text> Add your OpenRouter API key
                     to use premium models and get unlimited queries!
                 </Text>
             </View>

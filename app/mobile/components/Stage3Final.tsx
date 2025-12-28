@@ -1,4 +1,5 @@
 import { View, Text, ScrollView } from "react-native";
+import { Crown } from "lucide-react-native";
 import Markdown from "react-native-markdown-display";
 import type { Stage3Response } from "../lib/types";
 
@@ -31,7 +32,7 @@ export default function Stage3Final({ response }: Stage3FinalProps) {
             {/* Header */}
             <View className="flex-row items-center px-4 py-3 bg-emerald-100 border-b border-emerald-200">
                 <View className="w-8 h-8 rounded-full bg-stage3 items-center justify-center mr-3">
-                    <Text className="text-white text-sm">👑</Text>
+                    <Crown size={18} color="#fff" />
                 </View>
                 <View className="flex-1">
                     <Text className="text-emerald-900 font-bold text-base">

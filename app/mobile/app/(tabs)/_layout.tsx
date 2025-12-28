@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, Text } from "react-native";
+import { MessageSquare, Users, Settings } from "lucide-react-native";
 
 /**
  * Tab layout for the main app navigation.
@@ -30,10 +30,8 @@ export default function TabLayout() {
                 options={{
                     title: "Chats",
                     headerTitle: "LLM Council",
-                    tabBarIcon: ({ color }) => (
-                        <View className="items-center justify-center">
-                            <Text style={{ color, fontSize: 20 }}>💬</Text>
-                        </View>
+                    tabBarIcon: ({ color, size }) => (
+                        <MessageSquare color={color} size={size} />
                     ),
                 }}
             />
@@ -41,10 +39,8 @@ export default function TabLayout() {
                 name="configure"
                 options={{
                     title: "Council",
-                    tabBarIcon: ({ color }) => (
-                        <View className="items-center justify-center">
-                            <Text style={{ color, fontSize: 20 }}>👥</Text>
-                        </View>
+                    tabBarIcon: ({ color, size }) => (
+                        <Users color={color} size={size} />
                     ),
                 }}
             />
@@ -52,18 +48,9 @@ export default function TabLayout() {
                 name="settings"
                 options={{
                     title: "Settings",
-                    tabBarIcon: ({ color }) => (
-                        <View className="items-center justify-center">
-                            <Text style={{ color, fontSize: 20 }}>⚙️</Text>
-                        </View>
+                    tabBarIcon: ({ color, size }) => (
+                        <Settings color={color} size={size} />
                     ),
-                }}
-            />
-            <Tabs.Screen
-                name="chat/[id]"
-                options={{
-                    href: null, // Hide from tab bar
-                    title: "Chat",
                 }}
             />
         </Tabs>

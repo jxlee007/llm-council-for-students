@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { ChevronRight, ChevronDown, Trophy, Crown } from "lucide-react-native";
 import type { Stage1Response, Stage2Response, Stage3Response } from "../lib/types";
 import Stage1Tabs from "./Stage1Tabs";
 import Stage2Rankings from "./Stage2Rankings";
@@ -46,7 +47,11 @@ export default function CouncilResponse({ stage1, stage2, stage3 }: CouncilRespo
                         </View>
                         <Text className="text-blue-800 font-semibold">Individual Responses</Text>
                     </View>
-                    <Text className="text-blue-600">{expandedStages.stage1 ? "▼" : "▶"}</Text>
+                    {expandedStages.stage1 ? (
+                        <ChevronDown size={20} color="#2563eb" />
+                    ) : (
+                        <ChevronRight size={20} color="#2563eb" />
+                    )}
                 </TouchableOpacity>
 
                 {expandedStages.stage1 && (
@@ -77,7 +82,11 @@ export default function CouncilResponse({ stage1, stage2, stage3 }: CouncilRespo
                         </View>
                         <Text className="text-amber-800 font-semibold">Peer Rankings</Text>
                     </View>
-                    <Text className="text-amber-600">{expandedStages.stage2 ? "▼" : "▶"}</Text>
+                    {expandedStages.stage2 ? (
+                        <ChevronDown size={20} color="#d97706" />
+                    ) : (
+                        <ChevronRight size={20} color="#d97706" />
+                    )}
                 </TouchableOpacity>
 
                 {expandedStages.stage2 && (

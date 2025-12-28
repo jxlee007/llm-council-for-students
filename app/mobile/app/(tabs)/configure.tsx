@@ -1,16 +1,33 @@
 import { useState, useEffect } from "react";
 import { View, Text, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from "react-native";
+import { 
+  GraduationCap, 
+  TrendingUp, 
+  Code, 
+  Microscope, 
+  Scale, 
+  Crown, 
+  Check 
+} from "lucide-react-native";
 import { useStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { AnimatedButton } from "../../components/AnimatedButton";
 import { FadeInView } from "../../components/FadeInView";
 
+// Preset icon components
+const PresetIcons = {
+  academic: GraduationCap,
+  finance: TrendingUp,
+  programming: Code,
+  science: Microscope,
+  legal: Scale,
+};
+
 // Hardcoded presets from requirements
 const PRESETS = {
   academic: {
     label: "Academic",
-    icon: "🎓",
     description: "Highest context for long papers",
     chairman: "google/gemini-2.0-flash-exp:free",
     members: [
@@ -22,7 +39,6 @@ const PRESETS = {
   },
   finance: {
     label: "Finance",
-    icon: "📈",
     description: "Deep analysis & reporting",
     chairman: "google/gemini-2.0-flash-exp:free",
     members: [
@@ -34,7 +50,6 @@ const PRESETS = {
   },
   programming: {
     label: "Coding",
-    icon: "💻",
     description: "Code generation & review",
     chairman: "qwen/qwen3-coder:free",
     members: [
@@ -46,7 +61,6 @@ const PRESETS = {
   },
   science: {
     label: "Science",
-    icon: "🔬",
     description: "Literature review & data",
     chairman: "google/gemini-2.0-flash-exp:free",
     members: [
@@ -58,7 +72,6 @@ const PRESETS = {
   },
   legal: {
     label: "Legal",
-    icon: "⚖️",
     description: "Document analysis",
     chairman: "google/gemini-2.0-flash-exp:free",
     members: [
@@ -70,7 +83,7 @@ const PRESETS = {
   }
 };
 
-export default function ConfigureScreen() {
+function ConfigureScreen() {
     const {
         councilModels,
         chairmanModel,
@@ -130,6 +143,12 @@ export default function ConfigureScreen() {
         }
     };
 
+    // Helper to render preset icon
+    const renderPresetIcon = (key: string) => {
+        const IconComponent = PresetIcons[key as keyof typeof PresetIcons];
+        return IconComponent ? <IconComponent size={24} color="#4f46e5" /> : null;
+    };
+
     return (
         <View className="flex-1 bg-gray-50">
             <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
@@ -157,7 +176,7 @@ export default function ConfigureScreen() {
                                             : 'bg-white border-gray-200'
                                     }`}
                                 >
-                                    <Text className="text-2xl mb-2">{preset.icon}</Text>
+                                    <View className="mb-2">{renderPresetIcon(key)}</View>
                                     <Text className={`font-semibold ${
                                         activePreset === key ? 'text-indigo-700' : 'text-gray-900'
                                     }`}>
@@ -195,8 +214,9 @@ export default function ConfigureScreen() {
                         <Text className="text-sm font-semibold text-gray-900 mt-4 mb-2">
                             Chairman
                         </Text>
-                        <View className="bg-amber-100 self-start px-3 py-1 rounded-md border border-amber-200">
-                             <Text className="text-amber-900 text-xs font-medium">
+                        <View className="bg-amber-100 self-start px-3 py-1 rounded-md border border-amber-200 flex-row items-center">
+                             <Crown size={12} color="#92400e" className="mr-1.5" />
+                             <Text className="text-amber-900 text-xs font-bold">
                                 {chairmanModel ? (chairmanModel.split('/')[1] || chairmanModel) : 'Default (Gemini 2.0)'}
                             </Text>
                         </View>
@@ -236,15 +256,13 @@ export default function ConfigureScreen() {
                                         <View className="flex-row gap-2">
                                             <TouchableOpacity
                                                 onPress={() => setChairmanModel(isChairman ? null : model.id)}
-                                                className={`px-3 py-1.5 rounded-lg border ${
+                                                className={`p-2 rounded-lg border ${
                                                     isChairman
                                                         ? 'bg-amber-100 border-amber-300'
                                                         : 'bg-gray-50 border-gray-200'
                                                 }`}
                                             >
-                                                <Text className={isChairman ? 'text-amber-800' : 'text-gray-400'}>
-                                                    👑
-                                                </Text>
+                                                <Crown size={18} color={isChairman ? "#92400e" : "#9ca3af"} />
                                             </TouchableOpacity>
 
                                             <AnimatedButton
@@ -256,7 +274,7 @@ export default function ConfigureScreen() {
                                                 }`}
                                             >
                                                 {isSelected && (
-                                                    <Text className="text-white text-xs">✓</Text>
+                                                    <Check size={16} color="#fff" strokeWidth={3} />
                                                 )}
                                             </AnimatedButton>
                                         </View>
@@ -270,3 +288,5 @@ export default function ConfigureScreen() {
         </View>
     );
 }
+
+export default ConfigureScreen;
