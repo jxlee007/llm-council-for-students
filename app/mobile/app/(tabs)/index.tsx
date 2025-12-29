@@ -4,6 +4,7 @@ import {
     FlatList,
     TouchableOpacity,
     ActivityIndicator,
+    Text,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Plus, MessageSquarePlus } from "lucide-react-native";
@@ -12,7 +13,6 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@clerk/clerk-expo";
 import EmptyState from "../../components/EmptyState";
 import SkeletonLoader from "../../components/SkeletonLoader";
-import { Text } from "react-native";
 
 /**
  * Main conversation list screen.
@@ -34,7 +34,7 @@ export default function ConversationListScreen() {
     // Create new conversation
     const handleCreateConversation = async () => {
         if (!isSignedIn) {
-            router.push("/(auth)/login");
+            router.push("/(auth)");
             return;
         }
         
@@ -71,20 +71,20 @@ export default function ConversationListScreen() {
     // Render a conversation item
     const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity
-            className="bg-white mx-4 my-2 p-4 rounded-xl border border-gray-100 shadow-sm"
+            className="bg-card mx-4 my-2 p-4 rounded-xl border border-border shadow-sm"
             onPress={() => handleOpenConversation(item._id)}
             activeOpacity={0.7}
         >
             <View className="flex-row justify-between items-start">
                 <View className="flex-1 mr-4">
-                    <Text className="text-lg font-semibold text-gray-900" numberOfLines={1}>
+                    <Text className="text-lg font-semibold text-foreground" numberOfLines={1}>
                         {item.title}
                     </Text>
-                    <Text className="text-sm text-gray-400 mt-1">
+                    <Text className="text-sm text-muted-foreground mt-1">
                         AI Council
                     </Text>
                 </View>
-                <Text className="text-xs text-gray-400 font-medium">
+                <Text className="text-xs text-muted-foreground font-medium">
                     {formatDate(item.lastMessageAt)}
                 </Text>
             </View>
@@ -97,7 +97,7 @@ export default function ConversationListScreen() {
     }
 
     return (
-        <View className="flex-1 bg-gray-50">
+        <View className="flex-1 bg-background">
             {conversations.length === 0 ? (
                 <EmptyState 
                     icon={MessageSquarePlus}
@@ -118,15 +118,15 @@ export default function ConversationListScreen() {
 
                     {/* FAB for new conversation */}
                     <TouchableOpacity
-                        className="absolute bottom-6 right-6 w-16 h-16 bg-indigo-600 rounded-full items-center justify-center shadow-lg"
+                        className="absolute bottom-6 right-6 w-16 h-16 bg-primary rounded-full items-center justify-center shadow-lg"
                         onPress={handleCreateConversation}
                         disabled={creating}
                         activeOpacity={0.8}
                     >
                         {creating ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color="#0f1419" />
                         ) : (
-                            <Plus color="#fff" size={28} />
+                            <Plus color="#0f1419" size={28} />
                         )}
                     </TouchableOpacity>
                 </>

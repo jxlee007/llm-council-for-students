@@ -12,6 +12,7 @@ interface ChatInputProps {
 /**
  * Chat input component with text input, send button, and file attachment support.
  * Extracts text from files (max 50k chars) for council consumption.
+ * Styled for Dark Mode.
  */
 export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
     const [message, setMessage] = useState("");
@@ -34,7 +35,7 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
     };
 
     return (
-        <View className="px-4 py-3 bg-white border-t border-gray-200">
+        <View className="px-4 py-3 bg-background border-t border-border">
             {/* Attachment Chip */}
             {attachment && (
                 <View className="mb-2">
@@ -53,15 +54,15 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                     className="w-10 h-10 items-center justify-center mr-2"
                     activeOpacity={0.7}
                 >
-                    <Paperclip size={20} color={disabled ? "#d1d5db" : "#6b7280"} />
+                    <Paperclip size={20} color={disabled ? "#4b5563" : "#9ca3af"} />
                 </TouchableOpacity>
 
                 {/* Text input */}
-                <View className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 min-h-[44px] max-h-32">
+                <View className="flex-1 bg-input rounded-2xl px-4 py-2 min-h-[44px] max-h-32 border border-border">
                     <TextInput
-                        className="text-base text-gray-900 leading-5"
+                        className="text-base text-foreground leading-5"
                         placeholder="Ask the council..."
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor="#6b7280"
                         value={message}
                         onChangeText={setMessage}
                         multiline
@@ -75,18 +76,17 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 <TouchableOpacity
                     onPress={handleSend}
                     disabled={(!message.trim() && !attachment) || disabled}
-                    className={`w-10 h-10 ml-2 items-center justify-center rounded-full ${(message.trim() || attachment) && !disabled ? "bg-primary-600" : "bg-gray-300"
+                    className={`w-10 h-10 ml-2 items-center justify-center rounded-full ${(message.trim() || attachment) && !disabled ? "bg-primary" : "bg-muted"
                         }`}
                     activeOpacity={0.7}
                 >
                     {disabled ? (
-                        <ActivityIndicator size="small" color="#fff" />
+                        <ActivityIndicator size="small" color="#0f1419" />
                     ) : (
-                        <Send size={18} color="#fff" />
+                        <Send size={18} color="#0f1419" />
                     )}
                 </TouchableOpacity>
             </View>
         </View>
     );
 }
-

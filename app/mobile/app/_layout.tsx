@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { useUIStore } from "../lib/store";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import OfflineBanner from "../components/OfflineBanner";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/tokenCache";
 import { ConvexReactClient } from "convex/react";
@@ -26,8 +27,8 @@ function AppNavigation() {
         const inAuthGroup = segments[0] === "(auth)";
 
         if (!isSignedIn && !inAuthGroup) {
-            // Redirect to login if not signed in and trying to access protected routes
-            router.replace("/(auth)/login");
+            // Redirect to onboarding/login if not signed in and trying to access protected routes
+            router.replace("/(auth)");
         } else if (isSignedIn && inAuthGroup) {
             // Redirect to home if signed in and trying to access auth routes
             router.replace("/(tabs)");
@@ -48,6 +49,12 @@ function AppNavigation() {
         >
             <Stack.Screen
                 name="(tabs)"
+                options={{
+                    headerShown: false,
+                }}
+            />
+            <Stack.Screen
+                name="(auth)/index"
                 options={{
                     headerShown: false,
                 }}
@@ -105,7 +112,8 @@ export default function RootLayout() {
             <ClerkLoaded>
                 <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
                     <ErrorBoundary>
-                        <StatusBar style="auto" />
+                        <StatusBar style="light" />
+                        <OfflineBanner />
                         <AppNavigation />
                     </ErrorBoundary>
                 </ConvexProviderWithClerk>

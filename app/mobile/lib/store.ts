@@ -7,7 +7,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import type { AggregateRanking } from './types';
 
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 const COUNCIL_MODELS_KEY = '@llm_council_models';
@@ -42,11 +41,6 @@ const secureStorage = {
 };
 
 interface UIState {
-    // Active message state (transient)
-    isProcessing: boolean;
-    currentStage: 0 | 1 | 2 | 3;
-    aggregateRankings: AggregateRanking[];
-
     // Settings (persisted locally)
     hasApiKey: boolean;
     councilModels: string[];
@@ -54,9 +48,6 @@ interface UIState {
 
     // Actions
     loadSettings: () => Promise<void>;
-    setIsProcessing: (value: boolean) => void;
-    setCurrentStage: (stage: 0 | 1 | 2 | 3) => void;
-    setAggregateRankings: (rankings: AggregateRanking[]) => void;
     setCouncilModels: (models: string[]) => void;
     setChairmanModel: (model: string | null) => void;
 
@@ -70,9 +61,6 @@ interface UIState {
 export const useUIStore = create<UIState>((set, get) => ({
 
     // Initial state
-    isProcessing: false,
-    currentStage: 0,
-    aggregateRankings: [],
     hasApiKey: false,
     councilModels: [],
     chairmanModel: null,
@@ -99,12 +87,6 @@ export const useUIStore = create<UIState>((set, get) => ({
             console.error('Failed to load settings:', error);
         }
     },
-
-    setIsProcessing: (value) => set({ isProcessing: value }),
-
-    setCurrentStage: (stage) => set({ currentStage: stage }),
-
-    setAggregateRankings: (rankings) => set({ aggregateRankings: rankings }),
 
     setCouncilModels: (models) => {
         set({ councilModels: models });
@@ -140,4 +122,3 @@ export const useUIStore = create<UIState>((set, get) => ({
         set({ hasApiKey: !!key });
     },
 }));
-

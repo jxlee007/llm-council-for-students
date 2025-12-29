@@ -1,18 +1,18 @@
 import { View, Text, ScrollView } from "react-native";
 import { Trophy } from "lucide-react-native";
-import type { Stage2Response } from "../lib/types";
-import { useUIStore } from "../lib/store";
+import type { Stage2Response, AggregateRanking } from "../lib/types";
 
 interface Stage2RankingsProps {
     rankings: Stage2Response[];
+    aggregateRankings?: AggregateRanking[];
 }
 
 /**
  * Visual ranking display with aggregate rankings.
  * Shows 1st/2nd/3rd badges with color coding.
+ * Styled for Dark Mode.
  */
-export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
-    const { aggregateRankings } = useUIStore();
+export default function Stage2Rankings({ rankings, aggregateRankings = [] }: Stage2RankingsProps) {
 
     // Extract model short name from full identifier
     const getModelShortName = (model: string) => {
@@ -30,31 +30,31 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
         switch (rank) {
             case 1:
                 return {
-                    bg: "bg-yellow-100",
-                    text: "text-yellow-800",
-                    border: "border-yellow-300",
-                    emoji: <Trophy size={20} color="#b45309" />,
+                    bg: "bg-yellow-900/20",
+                    text: "text-yellow-400",
+                    border: "border-yellow-800",
+                    emoji: <Trophy size={20} color="#facc15" />,
                 };
             case 2:
                 return {
-                    bg: "bg-gray-100",
-                    text: "text-gray-700",
-                    border: "border-gray-300",
-                    emoji: <Trophy size={20} color="#4b5563" />,
+                    bg: "bg-secondary",
+                    text: "text-foreground",
+                    border: "border-border",
+                    emoji: <Trophy size={20} color="#9ca3af" />,
                 };
             case 3:
                 return {
-                    bg: "bg-amber-100",
-                    text: "text-amber-800",
-                    border: "border-amber-300",
-                    emoji: <Trophy size={20} color="#d97706" />,
+                    bg: "bg-amber-900/20",
+                    text: "text-amber-400",
+                    border: "border-amber-800",
+                    emoji: <Trophy size={20} color="#fbbf24" />,
                 };
             default:
                 return {
-                    bg: "bg-gray-50",
-                    text: "text-gray-600",
-                    border: "border-gray-200",
-                    emoji: <Text className="text-xs font-bold text-gray-400">#{rank}</Text>,
+                    bg: "bg-muted",
+                    text: "text-muted-foreground",
+                    border: "border-border",
+                    emoji: <Text className="text-xs font-bold text-muted-foreground">#{rank}</Text>,
                 };
         }
     };
@@ -62,7 +62,7 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
     if (!rankings || rankings.length === 0) {
         return (
             <View className="p-4 items-center">
-                <Text className="text-gray-500">No rankings available</Text>
+                <Text className="text-muted-foreground">No rankings available</Text>
             </View>
         );
     }
@@ -72,7 +72,7 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
             {/* Aggregate Rankings */}
             {aggregateRankings.length > 0 && (
                 <View className="mb-4">
-                    <Text className="text-sm font-semibold text-gray-700 mb-2">
+                    <Text className="text-sm font-semibold text-foreground mb-2">
                         Aggregate Rankings
                     </Text>
                     {aggregateRankings.map((ranking, index) => {
@@ -87,7 +87,7 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
                                     <Text className={`font-medium ${style.text}`}>
                                         {getModelShortName(ranking.model)}
                                     </Text>
-                                    <Text className="text-xs text-gray-500">
+                                    <Text className="text-xs text-muted-foreground">
                                         Avg. rank: {ranking.average_rank.toFixed(2)} ({ranking.rankings_count} votes)
                                     </Text>
                                 </View>
@@ -99,16 +99,16 @@ export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
 
             {/* Individual Rankings from each model */}
             <View>
-                <Text className="text-sm font-semibold text-gray-700 mb-2">
+                <Text className="text-sm font-semibold text-foreground mb-2">
                     Individual Model Votes
                 </Text>
                 <ScrollView className="max-h-40">
                     {rankings.map((ranking) => (
                         <View
                             key={ranking.model}
-                            className="bg-gray-50 rounded-lg p-3 mb-2"
+                            className="bg-secondary/30 rounded-lg p-3 mb-2"
                         >
-                            <Text className="text-sm font-medium text-gray-700 mb-1">
+                            <Text className="text-sm font-medium text-foreground mb-1">
                                 {getModelShortName(ranking.model)} ranked:
                             </Text>
                             <View className="flex-row flex-wrap">
