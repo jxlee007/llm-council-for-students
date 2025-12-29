@@ -18,18 +18,23 @@ export default function SignIn() {
 
   const onSignInWithOAuth = React.useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
     try {
+      console.log(`Starting OAuth flow for ${strategy}...`);
       const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
       
       const { createdSessionId, setActive } = await startFlow({
-        redirectUrl: Linking.createURL("/(tabs)", { scheme: "llm-council" }),
+        redirectUrl: Linking.createURL("/", { scheme: "llm-council" }),
       });
 
+      console.log("OAuth response session ID:", createdSessionId);
+
       if (createdSessionId) {
-        setActive!({ session: createdSessionId });
+        await setActive!({ session: createdSessionId });
         router.replace("/(tabs)");
+      } else {
+        console.log("No session ID created yet, waiting for redirect...");
       }
-    } catch (err) {
-      console.error("OAuth error", err);
+    } catch (err: any) {
+      console.error("OAuth error:", JSON.stringify(err, null, 2));
     }
   }, [startGoogleFlow, startAppleFlow, router]);
 

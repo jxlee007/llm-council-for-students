@@ -104,7 +104,7 @@ export default function SettingsScreen() {
                                 Sign in to sync your conversation history across devices.
                             </Text>
                             <TouchableOpacity
-                                onPress={() => router.push("/(auth)/sign-in")}
+                                onPress={() => router.push("/(auth)/login")}
                                 className="bg-black py-3 rounded-lg flex-row items-center justify-center"
                             >
                                 <User size={18} color="#ffffff" className="mr-2" />
