@@ -7,9 +7,9 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import OfflineBanner from "../components/OfflineBanner";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/tokenCache";
-import { ConvexReactClient } from "convex/react";
+import { ConvexReactClient, useConvexAuth } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { View, Text } from "react-native";
+import { View, Text, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Initialize Convex client
@@ -18,25 +18,38 @@ const convex = new ConvexReactClient(
 );
 
 function AppNavigation() {
-    const { isLoaded, isSignedIn } = useAuth();
+    // CRITICAL: Use useConvexAuth instead of useAuth to prevent race condition
+    // useAuth reports "signed in" before Convex receives the token, causing redirect loops
+    const { isLoading, isAuthenticated } = useConvexAuth();
     const segments = useSegments();
     const router = useRouter();
 
     useEffect(() => {
-        if (!isLoaded) return;
+        // Wait until auth state is fully resolved
+        if (isLoading) return;
 
         const inAuthGroup = segments[0] === "(auth)";
 
-        if (!isSignedIn && !inAuthGroup) {
-            // Redirect to Login if not signed in
+        if (!isAuthenticated && !inAuthGroup) {
+            // Redirect to Login if not authenticated
             console.log("[Auth Guard] Redirecting to (auth)/login");
             router.replace("/(auth)/login");
-        } else if (isSignedIn && inAuthGroup) {
-            // Redirect to Tabs if signed in
+        } else if (isAuthenticated && inAuthGroup) {
+            // Redirect to Tabs if authenticated
             console.log("[Auth Guard] Redirecting to (tabs)");
             router.replace("/(tabs)");
         }
-    }, [isSignedIn, segments, isLoaded]);
+    }, [isAuthenticated, segments, isLoading]);
+
+    // Show full-screen loading state while auth is being resolved
+    if (isLoading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f1419' }}>
+                <ActivityIndicator size="large" color="#6366f1" />
+                <Text style={{ color: '#9ca3af', marginTop: 16, fontSize: 14 }}>Authenticating...</Text>
+            </View>
+        );
+    }
 
     return (
         <Stack

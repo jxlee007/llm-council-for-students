@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
+import * as AuthSession from "expo-auth-session";
 import { useWarmUpBrowser } from "../../lib/useWarmUpBrowser";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -22,7 +22,7 @@ export default function SignIn() {
       const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
       
       const { createdSessionId, setActive } = await startFlow({
-        redirectUrl: Linking.createURL("/", { scheme: "llm-council" }),
+        redirectUrl: AuthSession.makeRedirectUri({ native: "llm-council://" }),
       });
 
       console.log("OAuth response session ID:", createdSessionId);

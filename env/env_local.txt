@@ -1,0 +1,8 @@
+# Deployment used by `npx convex dev`
+CONVEX_DEPLOYMENT=dev:helpful-civet-167 # team: jxlee007, project: llm-council-student
+
+EXPO_PUBLIC_CONVEX_URL=https://helpful-civet-167.convex.cloud
+CLERK_ISSUER_URL=https://helpful-civet-167.convex.site/clerk-webhook
+
+EXPO_PUBLIC_API_URL=http://192.168.0.116:8001
+EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_d2lubmluZy13b2xmLTQ3LmNsZXJrLmFjY291bnRzLmRldiQ
