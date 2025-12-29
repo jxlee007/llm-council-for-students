@@ -25,21 +25,21 @@ export default function SkeletonLoader() {
 
   const SkeletonItem = () => (
     <Animated.View 
-      className="bg-white mx-4 my-2 p-4 rounded-xl border border-gray-100 shadow-sm"
+      className="bg-card mx-4 my-2 p-4 rounded-xl border border-border shadow-sm"
       style={{ opacity }}
     >
       <View className="flex-row justify-between items-start">
         <View className="flex-1 mr-4">
-          <View className="h-5 bg-gray-200 rounded-md w-3/4 mb-2" />
-          <View className="h-4 bg-gray-100 rounded-md w-1/2" />
+          <View className="h-5 bg-secondary rounded-md w-3/4 mb-2" />
+          <View className="h-4 bg-muted rounded-md w-1/2" />
         </View>
-        <View className="h-3 bg-gray-100 rounded-md w-12" />
+        <View className="h-3 bg-muted rounded-md w-12" />
       </View>
     </Animated.View>
   );
 
   return (
-    <View className="flex-1 bg-gray-50 py-2">
+    <View className="flex-1 bg-background py-2">
       <SkeletonItem />
       <SkeletonItem />
       <SkeletonItem />
