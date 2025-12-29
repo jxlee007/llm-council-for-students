@@ -8,7 +8,7 @@ import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/tokenCache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import { View, Text, ActivityIndicator } from "react-native";
+import { View, Text, ActivityIndicator, Platform } from "react-native";
 
 // Initialize Convex client
 const convex = new ConvexReactClient(
@@ -21,15 +21,16 @@ function AppNavigation() {
     const router = useRouter();
 
     useEffect(() => {
+        console.log("[Auth Guard] isLoaded:", isLoaded, "isSignedIn:", isSignedIn, "segments:", segments);
         if (!isLoaded) return;
 
         const inAuthGroup = segments[0] === "(auth)";
 
         if (!isSignedIn && !inAuthGroup) {
-            // Redirect to login if not signed in and trying to access protected routes
+            console.log("[Auth Guard] Not signed in, redirecting to login");
             router.replace("/(auth)/login");
         } else if (isSignedIn && inAuthGroup) {
-            // Redirect to home if signed in and trying to access auth routes
+            console.log("[Auth Guard] Signed in and in auth group, redirecting to tabs");
             router.replace("/(tabs)");
         }
     }, [isSignedIn, segments, isLoaded]);
@@ -54,13 +55,6 @@ function AppNavigation() {
             />
             <Stack.Screen
                 name="(auth)/login"
-                options={{
-                    headerShown: false,
-                    presentation: "modal"
-                }}
-            />
-            <Stack.Screen
-                name="(auth)/sign-in"
                 options={{
                     headerShown: false,
                     presentation: "modal"

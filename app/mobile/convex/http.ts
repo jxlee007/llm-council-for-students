@@ -13,6 +13,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const payloadString = await request.text();
+    console.log("Clerk Webhook received:", payloadString);
     const headerPayload = request.headers;
 
     // TODO: Verify webhook signature using Svix
