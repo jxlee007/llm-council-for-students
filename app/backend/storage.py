@@ -25,14 +25,13 @@ if STORAGE_BACKEND == "convex":
 
 def validate_conversation_id(conversation_id: str):
     """
-    Validate that the conversation ID is safe (alphanumeric and hyphens only).
+    Validate that the conversation ID is safe (alphanumeric, hyphens, and underscores only).
     Raises ValueError if invalid.
     """
-    # Convex IDs can contain other characters?
-    # Usually they are safe strings.
-    # We'll keep this check for file storage.
+    # Convex IDs can contain underscores
+    # We validate to prevent path traversal attacks
     if STORAGE_BACKEND == "file":
-        if not re.match(r'^[a-zA-Z0-9-]+$', conversation_id):
+        if not re.match(r'^[a-zA-Z0-9_-]+$', conversation_id):
             raise ValueError(f"Invalid conversation ID: {conversation_id}")
 
 

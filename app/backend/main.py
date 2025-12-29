@@ -106,10 +106,13 @@ async def send_message(
     
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
-    # Check if conversation exists
+    # Check if conversation exists, auto-create if not
+    # This handles the case where conversation was created in Convex but not in Python storage
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        # Auto-create the conversation for new Convex IDs
+        print(f"[Auto-create] Conversation {conversation_id} not found, creating...")
+        conversation = storage.create_conversation(conversation_id)
 
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
@@ -159,10 +162,13 @@ async def send_message_stream(
     
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
-    # Check if conversation exists
+    # Check if conversation exists, auto-create if not
+    # This handles the case where conversation was created in Convex but not in Python storage
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        # Auto-create the conversation for new Convex IDs
+        print(f"[Auto-create] Conversation {conversation_id} not found, creating...")
+        conversation = storage.create_conversation(conversation_id)
 
     # Check if this is the first message
     is_first_message = len(conversation["messages"]) == 0
