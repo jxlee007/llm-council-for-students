@@ -4,7 +4,6 @@ import {
   Text, 
   TouchableOpacity, 
   ActivityIndicator, 
-  Platform, 
   ImageBackground,
   StyleSheet,
   StatusBar
@@ -13,16 +12,26 @@ import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
-import { useWarmUpBrowser } from "../../lib/useWarmUpBrowser";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Chrome, Apple, Cpu } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
+
+// Warm up browser for Android (crucial for smooth auth)
+const useWarmUpBrowser = () => {
+  React.useEffect(() => {
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   useWarmUpBrowser();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
   const { startOAuthFlow: startGoogleFlow } = useOAuth({ strategy: "oauth_google" });
   const { startOAuthFlow: startAppleFlow } = useOAuth({ strategy: "oauth_apple" });
@@ -38,43 +47,43 @@ export default function LoginScreen() {
       
       const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
       
-      // Use a simpler redirect URL for better compatibility
-      const redirectUrl = Linking.createURL("/");
+      // Critical: Use explicit scheme for the redirect URL
+      const redirectUrl = Linking.createURL("/(tabs)", { scheme: "llm-council" });
       console.log("Using redirect URL:", redirectUrl);
       
-      const result = await startFlow({ redirectUrl });
+      const { createdSessionId, signIn, signUp, setActive } = await startFlow({ redirectUrl });
       
-      console.log("Full OAuth result:", JSON.stringify(result, null, 2));
-
-      const { createdSessionId, signIn, signUp, setActive: setOAuthActive } = result;
+      console.log("OAuth result:", { 
+        createdSessionId, 
+        signInStatus: signIn?.status,
+        signUpStatus: signUp?.status 
+      });
 
       // Case 1: Session was created immediately
-      if (createdSessionId) {
+      if (createdSessionId && setActive) {
         console.log("Session created, setting active...");
-        await setOAuthActive!({ session: createdSessionId });
-        console.log("Session set active, navigating to tabs...");
-        router.replace("/(tabs)");
+        await setActive({ session: createdSessionId });
+        console.log("Session set active!");
+        // Navigation will happen automatically via auth guard in _layout.tsx
         return;
       }
 
-      // Case 2: SignUp flow completed, get the session from signUp
-      if (signUp?.status === "complete" && signUp.createdSessionId) {
+      // Case 2: SignUp flow completed
+      if (signUp?.status === "complete" && signUp.createdSessionId && setActive) {
         console.log("SignUp complete, setting session...");
-        await setOAuthActive!({ session: signUp.createdSessionId });
-        router.replace("/(tabs)");
+        await setActive({ session: signUp.createdSessionId });
         return;
       }
 
-      // Case 3: SignIn flow completed, get the session from signIn
-      if (signIn?.status === "complete" && signIn.createdSessionId) {
+      // Case 3: SignIn flow completed
+      if (signIn?.status === "complete" && signIn.createdSessionId && setActive) {
         console.log("SignIn complete, setting session...");
-        await setOAuthActive!({ session: signIn.createdSessionId });
-        router.replace("/(tabs)");
+        await setActive({ session: signIn.createdSessionId });
         return;
       }
 
-      // Case 4: Flow needs additional steps (MFA, email verification, etc.)
-      console.log("OAuth flow incomplete. signIn status:", signIn?.status, "signUp status:", signUp?.status);
+      // Case 4: Flow incomplete
+      console.log("OAuth flow incomplete:", { signIn, signUp });
       setError("Sign-in incomplete. Please try again.");
       
     } catch (err: any) {
@@ -96,7 +105,7 @@ export default function LoginScreen() {
           colors={['transparent', 'rgba(0,0,0,0.8)']}
           style={styles.overlay}
         >
-          <SafeAreaView style={styles.content}>
+          <View style={[styles.content, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             {/* Spacer for top */}
             <View style={styles.header} />
 
@@ -153,7 +162,7 @@ export default function LoginScreen() {
                 <Text style={styles.footerLink}>Terms of service</Text>
               </TouchableOpacity>
             </View>
-          </SafeAreaView>
+          </View>
         </LinearGradient>
       </ImageBackground>
     </View>
@@ -173,7 +182,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
   },
-content: {
+  content: {
     flex: 1,
     paddingHorizontal: 24,
     justifyContent: 'space-between',
@@ -182,15 +191,6 @@ content: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingTop: 10,
-  },
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   logoContainer: {
     alignItems: 'center',

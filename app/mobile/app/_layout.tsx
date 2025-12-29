@@ -9,6 +9,7 @@ import { tokenCache } from "../lib/tokenCache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { View, Text, ActivityIndicator, Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Initialize Convex client
 const convex = new ConvexReactClient(
@@ -92,18 +93,20 @@ export default function RootLayout() {
     }
 
     return (
-        <ClerkProvider
-            publishableKey={publishableKey}
-            tokenCache={tokenCache}
-        >
-            <ClerkLoaded>
-                <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-                    <ErrorBoundary>
-                        <StatusBar style="auto" />
-                        <AppNavigation />
-                    </ErrorBoundary>
-                </ConvexProviderWithClerk>
-            </ClerkLoaded>
-        </ClerkProvider>
+        <SafeAreaProvider>
+            <ClerkProvider
+                publishableKey={publishableKey}
+                tokenCache={tokenCache}
+            >
+                <ClerkLoaded>
+                    <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+                        <ErrorBoundary>
+                            <StatusBar style="auto" />
+                            <AppNavigation />
+                        </ErrorBoundary>
+                    </ConvexProviderWithClerk>
+                </ClerkLoaded>
+            </ClerkProvider>
+        </SafeAreaProvider>
     );
 }
