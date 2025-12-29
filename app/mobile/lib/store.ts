@@ -1,7 +1,7 @@
 /**
- * Zustand store for app state management.
- * Handles transient UI state and local settings.
- * Persistent data (conversations, messages) is now handled by Convex.
+ * UI Store for transient state management.
+ * Handles only UI state and local settings.
+ * All data persistence (conversations, messages) is handled by Convex.
  */
 
 import { create } from 'zustand';
@@ -41,7 +41,7 @@ const secureStorage = {
   },
 };
 
-interface AppState {
+interface UIState {
     // Active message state (transient)
     isProcessing: boolean;
     currentStage: 0 | 1 | 2 | 3;
@@ -67,7 +67,8 @@ interface AppState {
     checkApiKeyExists: () => Promise<void>;
 }
 
-export const useStore = create<AppState>((set, get) => ({
+export const useUIStore = create<UIState>((set, get) => ({
+
     // Initial state
     isProcessing: false,
     currentStage: 0,

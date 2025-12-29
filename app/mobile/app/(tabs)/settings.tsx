@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, Switch } from "react-native";
 import { CheckCircle, Trash2, Lightbulb, Info, LogOut, User } from "lucide-react-native";
-import { useStore } from "../../lib/store";
+import { useUIStore } from "../../lib/store";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 
@@ -10,7 +10,7 @@ import { useRouter } from "expo-router";
  * Includes Authentication, BYOK API key management and other preferences.
  */
 export default function SettingsScreen() {
-    const { hasApiKey, saveApiKey, clearApiKey } = useStore();
+    const { hasApiKey, saveApiKey, clearApiKey } = useUIStore();
     const [apiKey, setApiKey] = useState("");
     const [showApiKey, setShowApiKey] = useState(false);
 

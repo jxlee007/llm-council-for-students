@@ -1,7 +1,7 @@
 import { View, Text, ScrollView } from "react-native";
 import { Trophy } from "lucide-react-native";
 import type { Stage2Response } from "../lib/types";
-import { useStore } from "../lib/store";
+import { useUIStore } from "../lib/store";
 
 interface Stage2RankingsProps {
     rankings: Stage2Response[];
@@ -12,7 +12,7 @@ interface Stage2RankingsProps {
  * Shows 1st/2nd/3rd badges with color coding.
  */
 export default function Stage2Rankings({ rankings }: Stage2RankingsProps) {
-    const { aggregateRankings } = useStore();
+    const { aggregateRankings } = useUIStore();
 
     // Extract model short name from full identifier
     const getModelShortName = (model: string) => {

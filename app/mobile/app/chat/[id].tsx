@@ -13,7 +13,7 @@ import { useLocalSearchParams, useNavigation } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useStore } from "../../lib/store";
+import { useUIStore } from "../../lib/store";
 import { sendMessage } from "../../lib/api";
 import type { Message, AssistantMessage, UserMessage } from "../../lib/types";
 import { ExtractedFile } from "../../lib/files";
@@ -49,7 +49,7 @@ function ChatScreen() {
         setAggregateRankings,
         councilModels,
         chairmanModel
-    } = useStore();
+    } = useUIStore();
 
     const [pendingResponse, setPendingResponse] = useState<Partial<AssistantMessage> | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -112,7 +112,7 @@ function ChatScreen() {
         setError(null);
 
         try {
-            const { loadApiKey } = useStore.getState();
+            const { loadApiKey } = useUIStore.getState();
             const apiKey = await loadApiKey();
 
             // Prepare prompt including extracted text if available

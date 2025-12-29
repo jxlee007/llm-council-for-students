@@ -9,7 +9,7 @@ import {
   Crown, 
   Check 
 } from "lucide-react-native";
-import { useStore } from "../../lib/store";
+import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { AnimatedButton } from "../../components/AnimatedButton";
@@ -89,7 +89,7 @@ function ConfigureScreen() {
         chairmanModel,
         setCouncilModels,
         setChairmanModel
-    } = useStore();
+    } = useUIStore();
 
     const [availableModels, setAvailableModels] = useState<Model[]>([]);
     const [isLoading, setIsLoading] = useState(false);

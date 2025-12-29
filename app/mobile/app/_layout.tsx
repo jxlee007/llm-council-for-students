@@ -1,26 +1,87 @@
 import "../global.css";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { useStore } from "../lib/store";
+import { useUIStore } from "../lib/store";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/tokenCache";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { View, Text, ActivityIndicator } from "react-native";
 
 // Initialize Convex client
 const convex = new ConvexReactClient(
     process.env.EXPO_PUBLIC_CONVEX_URL as string
 );
 
+function AppNavigation() {
+    const { isLoaded, isSignedIn } = useAuth();
+    const segments = useSegments();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isLoaded) return;
+
+        const inAuthGroup = segments[0] === "(auth)";
+
+        if (!isSignedIn && !inAuthGroup) {
+            // Redirect to login if not signed in and trying to access protected routes
+            router.replace("/(auth)/login");
+        } else if (isSignedIn && inAuthGroup) {
+            // Redirect to home if signed in and trying to access auth routes
+            router.replace("/(tabs)");
+        }
+    }, [isSignedIn, segments, isLoaded]);
+
+    return (
+        <Stack
+            screenOptions={{
+                headerStyle: {
+                    backgroundColor: "#4f46e5",
+                },
+                headerTintColor: "#fff",
+                headerTitleStyle: {
+                    fontWeight: "bold",
+                },
+            }}
+        >
+            <Stack.Screen
+                name="(tabs)"
+                options={{
+                    headerShown: false,
+                }}
+            />
+            <Stack.Screen
+                name="(auth)/login"
+                options={{
+                    headerShown: false,
+                    presentation: "modal"
+                }}
+            />
+            <Stack.Screen
+                name="(auth)/sign-in"
+                options={{
+                    headerShown: false,
+                    presentation: "modal"
+                }}
+            />
+            <Stack.Screen
+                name="chat/[id]"
+                options={{
+                    title: "Chat",
+                }}
+            />
+        </Stack>
+    );
+}
+
 /**
  * Root layout for the app.
  * Sets up Clerk auth, Convex database, and navigation stack.
  */
 export default function RootLayout() {
-    const { loadSettings } = useStore();
-
+    const { loadSettings } = useUIStore();
     const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
     useEffect(() => {
@@ -29,53 +90,26 @@ export default function RootLayout() {
     }, []);
 
     if (!publishableKey) {
-        console.warn("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY");
+        return (
+            <View className="flex-1 items-center justify-center bg-gray-50">
+                <Text className="text-red-500">Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY</Text>
+            </View>
+        );
     }
 
     return (
         <ClerkProvider
-            publishableKey={publishableKey!}
+            publishableKey={publishableKey}
             tokenCache={tokenCache}
         >
-            <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-                <ClerkLoaded>
+            <ClerkLoaded>
+                <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
                     <ErrorBoundary>
                         <StatusBar style="auto" />
-                        <Stack
-                            screenOptions={{
-                                headerStyle: {
-                                    backgroundColor: "#4f46e5",
-                                },
-                                headerTintColor: "#fff",
-                                headerTitleStyle: {
-                                    fontWeight: "bold",
-                                },
-                            }}
-                        >
-                            <Stack.Screen
-                                name="(tabs)"
-                                options={{
-                                    headerShown: false,
-                                }}
-                            />
-                            <Stack.Screen
-                                name="(auth)/sign-in"
-                                options={{
-                                    headerShown: false,
-                                    presentation: "modal"
-                                }}
-                            />
-                            <Stack.Screen
-                                name="chat/[id]"
-                                options={{
-                                    title: "Chat",
-                                }}
-                            />
-                        </Stack>
+                        <AppNavigation />
                     </ErrorBoundary>
-                </ClerkLoaded>
-            </ConvexProviderWithClerk>
+                </ConvexProviderWithClerk>
+            </ClerkLoaded>
         </ClerkProvider>
     );
 }
-

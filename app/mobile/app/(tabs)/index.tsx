@@ -1,17 +1,18 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import {
     View,
-    Text,
     FlatList,
     TouchableOpacity,
-    RefreshControl,
     ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Plus, MessageSquareQuote } from "lucide-react-native";
+import { Plus, MessageSquarePlus } from "lucide-react-native";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useStore } from "../../lib/store";
+import { useAuth } from "@clerk/clerk-expo";
+import EmptyState from "../../components/EmptyState";
+import SkeletonLoader from "../../components/SkeletonLoader";
+import { Text } from "react-native";
 
 /**
  * Main conversation list screen.
@@ -19,20 +20,29 @@ import { useStore } from "../../lib/store";
  */
 export default function ConversationListScreen() {
     const router = useRouter();
-    const conversations = useQuery(api.conversations.list);
+    const { isSignedIn } = useAuth();
+    
+    // Only run queries if signed in
+    const conversations = useQuery(
+        api.conversations.list,
+        isSignedIn ? {} : "skip"
+    );
     const createConversation = useMutation(api.conversations.create);
     
     const [creating, setCreating] = useState(false);
 
     // Create new conversation
     const handleCreateConversation = async () => {
+        if (!isSignedIn) {
+            router.push("/(auth)/login");
+            return;
+        }
+        
         setCreating(true);
         try {
             const conversationId = await createConversation({
                 title: "New Chat",
             });
-            // router.push(`/chat/${conversationId}`);
-            // Note: In Convex, conversationId is a string but with a specific format
             router.push(`/chat/${conversationId}`);
         } catch (error) {
             console.error("Failed to create conversation:", error);
@@ -70,74 +80,57 @@ export default function ConversationListScreen() {
                     <Text className="text-lg font-semibold text-gray-900" numberOfLines={1}>
                         {item.title}
                     </Text>
-                    <Text className="text-sm text-gray-500 mt-1">
+                    <Text className="text-sm text-gray-400 mt-1">
                         AI Council
                     </Text>
                 </View>
-                <Text className="text-xs text-gray-400">
+                <Text className="text-xs text-gray-400 font-medium">
                     {formatDate(item.lastMessageAt)}
                 </Text>
             </View>
         </TouchableOpacity>
     );
 
-    // Empty state
-    const EmptyState = () => (
-        <View className="flex-1 items-center justify-center p-8">
-            <MessageSquareQuote size={64} color="#4f46e5" />
-            <Text className="text-xl font-bold text-gray-900 text-center mt-4">
-                Welcome to LLM Council
-            </Text>
-            <Text className="text-gray-500 text-center mt-2">
-                Ask questions and get answers from a council of AI models
-            </Text>
-            <TouchableOpacity
-                className="mt-6 bg-primary-600 px-6 py-3 rounded-full"
-                onPress={handleCreateConversation}
-                disabled={creating}
-            >
-                <Text className="text-white font-semibold">Start your first chat</Text>
-            </TouchableOpacity>
-        </View>
-    );
-
+    // Loading state
     if (conversations === undefined) {
-        return (
-            <View className="flex-1 items-center justify-center bg-gray-50">
-                <ActivityIndicator size="large" color="#4f46e5" />
-            </View>
-        );
+        return <SkeletonLoader />;
     }
 
     return (
         <View className="flex-1 bg-gray-50">
             {conversations.length === 0 ? (
-                <EmptyState />
-            ) : (
-                <FlatList
-                    data={conversations}
-                    keyExtractor={(item) => item._id}
-                    renderItem={renderItem}
-                    contentContainerStyle={{ paddingVertical: 8 }}
+                <EmptyState 
+                    icon={MessageSquarePlus}
+                    title="No conversations yet"
+                    description="Start your first chat with the AI Council of experts."
+                    actionLabel="New Chat"
+                    onAction={handleCreateConversation}
+                    loading={creating}
                 />
-            )}
+            ) : (
+                <>
+                    <FlatList
+                        data={conversations}
+                        keyExtractor={(item) => item._id}
+                        renderItem={renderItem}
+                        contentContainerStyle={{ paddingVertical: 8 }}
+                    />
 
-            {/* FAB for new conversation */}
-            {conversations.length > 0 && (
-                <TouchableOpacity
-                    className="absolute bottom-6 right-6 w-14 h-14 bg-primary-600 rounded-full items-center justify-center shadow-lg"
-                    onPress={handleCreateConversation}
-                    disabled={creating}
-                    activeOpacity={0.8}
-                >
-                    {creating ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Plus color="#fff" size={24} />
-                    )}
-                </TouchableOpacity>
+                    {/* FAB for new conversation */}
+                    <TouchableOpacity
+                        className="absolute bottom-6 right-6 w-16 h-16 bg-indigo-600 rounded-full items-center justify-center shadow-lg"
+                        onPress={handleCreateConversation}
+                        disabled={creating}
+                        activeOpacity={0.8}
+                    >
+                        {creating ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                            <Plus color="#fff" size={28} />
+                        )}
+                    </TouchableOpacity>
+                </>
             )}
         </View>
     );
 }
-
