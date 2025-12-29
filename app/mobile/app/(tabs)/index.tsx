@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
     View,
     Text,
@@ -9,72 +9,46 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Plus, MessageSquareQuote } from "lucide-react-native";
-import { useStore, loadConversationFromStorage } from "../../lib/store";
-import { createConversation, getConversations } from "../../lib/api";
-import type { ConversationMetadata } from "../../lib/types";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useStore } from "../../lib/store";
 
 /**
  * Main conversation list screen.
- * Shows all conversations with pull-to-refresh and FAB to create new.
+ * Shows all conversations from Convex with real-time updates.
  */
 export default function ConversationListScreen() {
     const router = useRouter();
-    const { conversationsList, setConversationsList, isLoadingConversations, setCurrentConversation } = useStore();
-    const [refreshing, setRefreshing] = useState(false);
+    const conversations = useQuery(api.conversations.list);
+    const createConversation = useMutation(api.conversations.create);
+    
     const [creating, setCreating] = useState(false);
-
-    // Try to sync with backend on mount (fallback to local if offline)
-    const syncWithBackend = async () => {
-        try {
-            const backendConversations = await getConversations();
-            if (backendConversations.length > 0) {
-                setConversationsList(backendConversations);
-            }
-        } catch (error) {
-            // Backend unavailable, use local storage
-            console.log("Using local storage (backend unavailable)");
-        }
-    };
-
-    useEffect(() => {
-        syncWithBackend();
-    }, []);
-
-    // Pull to refresh
-    const onRefresh = useCallback(async () => {
-        setRefreshing(true);
-        await syncWithBackend();
-        setRefreshing(false);
-    }, []);
 
     // Create new conversation
     const handleCreateConversation = async () => {
         setCreating(true);
         try {
-            const conversation = await createConversation();
-            setCurrentConversation(conversation);
-            router.push(`/chat/${conversation.id}`);
+            const conversationId = await createConversation({
+                title: "New Chat",
+            });
+            // router.push(`/chat/${conversationId}`);
+            // Note: In Convex, conversationId is a string but with a specific format
+            router.push(`/chat/${conversationId}`);
         } catch (error) {
             console.error("Failed to create conversation:", error);
-            // TODO: Show error toast
         } finally {
             setCreating(false);
         }
     };
 
     // Open existing conversation
-    const handleOpenConversation = async (id: string) => {
-        // Try to load from local storage first
-        const conversation = await loadConversationFromStorage(id);
-        if (conversation) {
-            setCurrentConversation(conversation);
-        }
+    const handleOpenConversation = (id: string) => {
         router.push(`/chat/${id}`);
     };
 
     // Format date for display
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
+    const formatDate = (timestamp: number) => {
+        const date = new Date(timestamp);
         const now = new Date();
         const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -85,10 +59,10 @@ export default function ConversationListScreen() {
     };
 
     // Render a conversation item
-    const renderItem = ({ item }: { item: ConversationMetadata }) => (
+    const renderItem = ({ item }: { item: any }) => (
         <TouchableOpacity
             className="bg-white mx-4 my-2 p-4 rounded-xl border border-gray-100 shadow-sm"
-            onPress={() => handleOpenConversation(item.id)}
+            onPress={() => handleOpenConversation(item._id)}
             activeOpacity={0.7}
         >
             <View className="flex-row justify-between items-start">
@@ -97,11 +71,11 @@ export default function ConversationListScreen() {
                         {item.title}
                     </Text>
                     <Text className="text-sm text-gray-500 mt-1">
-                        {item.message_count} messages
+                        AI Council
                     </Text>
                 </View>
                 <Text className="text-xs text-gray-400">
-                    {formatDate(item.created_at)}
+                    {formatDate(item.lastMessageAt)}
                 </Text>
             </View>
         </TouchableOpacity>
@@ -127,7 +101,7 @@ export default function ConversationListScreen() {
         </View>
     );
 
-    if (isLoadingConversations) {
+    if (conversations === undefined) {
         return (
             <View className="flex-1 items-center justify-center bg-gray-50">
                 <ActivityIndicator size="large" color="#4f46e5" />
@@ -137,22 +111,19 @@ export default function ConversationListScreen() {
 
     return (
         <View className="flex-1 bg-gray-50">
-            {conversationsList.length === 0 ? (
+            {conversations.length === 0 ? (
                 <EmptyState />
             ) : (
                 <FlatList
-                    data={conversationsList}
-                    keyExtractor={(item) => item.id}
+                    data={conversations}
+                    keyExtractor={(item) => item._id}
                     renderItem={renderItem}
                     contentContainerStyle={{ paddingVertical: 8 }}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-                    }
                 />
             )}
 
             {/* FAB for new conversation */}
-            {conversationsList.length > 0 && (
+            {conversations.length > 0 && (
                 <TouchableOpacity
                     className="absolute bottom-6 right-6 w-14 h-14 bg-primary-600 rounded-full items-center justify-center shadow-lg"
                     onPress={handleCreateConversation}
@@ -169,3 +140,4 @@ export default function ConversationListScreen() {
         </View>
     );
 }
+

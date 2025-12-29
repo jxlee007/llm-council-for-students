@@ -1,8 +1,9 @@
 import React from "react";
 import { View, Text, TouchableOpacity, ScrollView } from "react-native";
-import { useSignIn } from "@clerk/clerk-expo";
+import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { useWarmUpBrowser } from "../../lib/useWarmUpBrowser";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -10,30 +11,27 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function SignIn() {
   useWarmUpBrowser();
-
-  const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
 
-  const onSignInWithOAuth = React.useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
-    if (!isLoaded) return;
+  const { startOAuthFlow: startGoogleFlow } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow: startAppleFlow } = useOAuth({ strategy: "oauth_apple" });
 
+  const onSignInWithOAuth = React.useCallback(async (strategy: "oauth_google" | "oauth_apple") => {
     try {
-      const { createdSessionId, signIn: signInAttempt, setActive: setActiveAttempt } =
-        await signIn.create({
-          strategy,
-        });
+      const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
+      
+      const { createdSessionId, setActive } = await startFlow({
+        redirectUrl: Linking.createURL("/(tabs)", { scheme: "llm-council" }),
+      });
 
       if (createdSessionId) {
-        setActiveAttempt!({ session: createdSessionId });
+        setActive!({ session: createdSessionId });
         router.replace("/(tabs)");
-      } else {
-        // Use signIn or signUp for next steps such as MFA
-        console.error("Session not created", signInAttempt);
       }
     } catch (err) {
       console.error("OAuth error", err);
     }
-  }, [isLoaded, signIn, setActive, router]);
+  }, [startGoogleFlow, startAppleFlow, router]);
 
   return (
     <SafeAreaView className="flex-1 bg-white p-6">

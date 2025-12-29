@@ -67,30 +67,6 @@ export async function getFreeModels(): Promise<Model[]> {
 }
 
 /**
- * List all conversations (metadata only).
- */
-export async function getConversations(): Promise<ConversationMetadata[]> {
-    return fetchApi<ConversationMetadata[]>('/api/conversations');
-}
-
-/**
- * Create a new conversation.
- */
-export async function createConversation(): Promise<Conversation> {
-    return fetchApi<Conversation>('/api/conversations', {
-        method: 'POST',
-        body: JSON.stringify({}),
-    });
-}
-
-/**
- * Get a specific conversation with all messages.
- */
-export async function getConversation(conversationId: string): Promise<Conversation> {
-    return fetchApi<Conversation>(`/api/conversations/${conversationId}`);
-}
-
-/**
  * Send a message and get the 3-stage council response.
  * @param conversationId - The conversation ID
  * @param content - The message content

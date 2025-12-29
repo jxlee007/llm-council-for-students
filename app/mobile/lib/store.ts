@@ -1,14 +1,14 @@
 /**
  * Zustand store for app state management.
- * Handles conversations, settings, and local caching.
+ * Handles transient UI state and local settings.
+ * Persistent data (conversations, messages) is now handled by Convex.
  */
 
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import type { Conversation, ConversationMetadata, Message, AggregateRanking } from './types';
+import type { AggregateRanking } from './types';
 
-const CONVERSATIONS_KEY = '@llm_council_conversations';
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 const COUNCIL_MODELS_KEY = '@llm_council_models';
 const CHAIRMAN_MODEL_KEY = '@llm_council_chairman';
@@ -17,10 +17,8 @@ const CHAIRMAN_MODEL_KEY = '@llm_council_chairman';
 const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
     if (Platform.OS === 'web') {
-      // Use AsyncStorage on web (less secure, but works)
       await AsyncStorage.setItem(`@secure_${key}`, value);
     } else {
-      // Use SecureStore on native
       const SecureStore = await import('expo-secure-store');
       await SecureStore.setItemAsync(key, value);
     }
@@ -44,28 +42,18 @@ const secureStorage = {
 };
 
 interface AppState {
-    // Conversations
-    conversationsList: ConversationMetadata[];
-    currentConversation: Conversation | null;
-    isLoadingConversations: boolean;
-
-    // Active message state
+    // Active message state (transient)
     isProcessing: boolean;
     currentStage: 0 | 1 | 2 | 3;
     aggregateRankings: AggregateRanking[];
 
-    // Settings
+    // Settings (persisted locally)
     hasApiKey: boolean;
     councilModels: string[];
     chairmanModel: string | null;
 
     // Actions
-    loadConversationsFromStorage: () => Promise<void>;
-    saveConversationToStorage: (conversation: Conversation) => Promise<void>;
-    setConversationsList: (list: ConversationMetadata[]) => void;
-    setCurrentConversation: (conversation: Conversation | null) => void;
-    addMessageToCurrentConversation: (message: Message) => void;
-    updateConversationTitle: (id: string, title: string) => void;
+    loadSettings: () => Promise<void>;
     setIsProcessing: (value: boolean) => void;
     setCurrentStage: (stage: 0 | 1 | 2 | 3) => void;
     setAggregateRankings: (rankings: AggregateRanking[]) => void;
@@ -81,9 +69,6 @@ interface AppState {
 
 export const useStore = create<AppState>((set, get) => ({
     // Initial state
-    conversationsList: [],
-    currentConversation: null,
-    isLoadingConversations: false,
     isProcessing: false,
     currentStage: 0,
     aggregateRankings: [],
@@ -91,16 +76,9 @@ export const useStore = create<AppState>((set, get) => ({
     councilModels: [],
     chairmanModel: null,
 
-    // Load conversations from AsyncStorage
-    loadConversationsFromStorage: async () => {
-        set({ isLoadingConversations: true });
+    // Load local settings
+    loadSettings: async () => {
         try {
-            const data = await AsyncStorage.getItem(CONVERSATIONS_KEY);
-            if (data) {
-                const conversations: ConversationMetadata[] = JSON.parse(data);
-                set({ conversationsList: conversations });
-            }
-
             // Load council config
             const councilData = await AsyncStorage.getItem(COUNCIL_MODELS_KEY);
             if (councilData) {
@@ -112,80 +90,13 @@ export const useStore = create<AppState>((set, get) => ({
                 set({ chairmanModel: chairmanData });
             }
 
+            // Check API key
+            const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
+            set({ hasApiKey: !!key });
+
         } catch (error) {
-            console.error('Failed to load conversations:', error);
-        } finally {
-            set({ isLoadingConversations: false });
+            console.error('Failed to load settings:', error);
         }
-    },
-
-    // Save a conversation to AsyncStorage
-    saveConversationToStorage: async (conversation: Conversation) => {
-        try {
-            // Save full conversation
-            await AsyncStorage.setItem(
-                `${CONVERSATIONS_KEY}_${conversation.id}`,
-                JSON.stringify(conversation)
-            );
-
-            // Update conversations list
-            const { conversationsList } = get();
-            const metadata: ConversationMetadata = {
-                id: conversation.id,
-                created_at: conversation.created_at,
-                title: conversation.title,
-                message_count: conversation.messages.length,
-            };
-
-            const existingIndex = conversationsList.findIndex(c => c.id === conversation.id);
-            let newList: ConversationMetadata[];
-
-            if (existingIndex >= 0) {
-                newList = [...conversationsList];
-                newList[existingIndex] = metadata;
-            } else {
-                newList = [metadata, ...conversationsList];
-            }
-
-            set({ conversationsList: newList });
-            await AsyncStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(newList));
-        } catch (error) {
-            console.error('Failed to save conversation:', error);
-        }
-    },
-
-    setConversationsList: (list) => set({ conversationsList: list }),
-
-    setCurrentConversation: (conversation) => set({ currentConversation: conversation }),
-
-    addMessageToCurrentConversation: (message) => {
-        const { currentConversation } = get();
-        if (currentConversation) {
-            const updated = {
-                ...currentConversation,
-                messages: [...currentConversation.messages, message],
-            };
-            set({ currentConversation: updated });
-            get().saveConversationToStorage(updated);
-        }
-    },
-
-    updateConversationTitle: (id, title) => {
-        const { conversationsList, currentConversation } = get();
-
-        // Update in list
-        const newList = conversationsList.map(c =>
-            c.id === id ? { ...c, title } : c
-        );
-        set({ conversationsList: newList });
-
-        // Update current if it matches
-        if (currentConversation?.id === id) {
-            set({ currentConversation: { ...currentConversation, title } });
-        }
-
-        // Persist to storage
-        AsyncStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(newList));
     },
 
     setIsProcessing: (value) => set({ isProcessing: value }),
@@ -208,7 +119,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
     },
 
-    // API Key management using SecureStore (or AsyncStorage on web)
+    // API Key management
     saveApiKey: async (key: string) => {
         await secureStorage.setItem(API_KEY_SECURE_KEY, key);
         set({ hasApiKey: true });
@@ -229,17 +140,3 @@ export const useStore = create<AppState>((set, get) => ({
     },
 }));
 
-/**
- * Load a specific conversation from AsyncStorage.
- */
-export async function loadConversationFromStorage(id: string): Promise<Conversation | null> {
-    try {
-        const data = await AsyncStorage.getItem(`${CONVERSATIONS_KEY}_${id}`);
-        if (data) {
-            return JSON.parse(data);
-        }
-    } catch (error) {
-        console.error('Failed to load conversation:', error);
-    }
-    return null;
-}

@@ -1,42 +1,59 @@
 import { useState } from "react";
 import { View, TextInput, TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { Paperclip, Send } from "lucide-react-native";
+import { pickAndExtractText, ExtractedFile } from "../lib/files";
+import { FileChip } from "./FileChip";
 
 interface ChatInputProps {
-    onSend: (message: string) => void;
+    onSend: (message: string, attachment?: ExtractedFile) => void;
     disabled?: boolean;
 }
 
 /**
- * Chat input component with text input and send button.
- * Includes image picker button for future use.
+ * Chat input component with text input, send button, and file attachment support.
+ * Extracts text from files (max 50k chars) for council consumption.
  */
 export default function ChatInput({ onSend, disabled = false }: ChatInputProps) {
     const [message, setMessage] = useState("");
+    const [attachment, setAttachment] = useState<ExtractedFile | null>(null);
 
     const handleSend = () => {
         const trimmed = message.trim();
-        if (trimmed && !disabled) {
-            onSend(trimmed);
+        if ((trimmed || attachment) && !disabled) {
+            onSend(trimmed, attachment || undefined);
             setMessage("");
+            setAttachment(null);
         }
     };
 
-    const handleImagePick = () => {
-        // TODO: Implement image picker with expo-image-picker
-        console.log("Image picker - coming soon!");
+    const handleFilePick = async () => {
+        const file = await pickAndExtractText();
+        if (file) {
+            setAttachment(file);
+        }
     };
 
     return (
         <View className="px-4 py-3 bg-white border-t border-gray-200">
+            {/* Attachment Chip */}
+            {attachment && (
+                <View className="mb-2">
+                    <FileChip 
+                        name={attachment.name} 
+                        onRemove={() => setAttachment(null)} 
+                    />
+                </View>
+            )}
+
             <View className="flex-row items-end">
-                {/* Image picker button */}
+                {/* File picker button */}
                 <TouchableOpacity
-                    onPress={handleImagePick}
+                    onPress={handleFilePick}
+                    disabled={disabled}
                     className="w-10 h-10 items-center justify-center mr-2"
                     activeOpacity={0.7}
                 >
-                    <Paperclip size={20} color="#6b7280" />
+                    <Paperclip size={20} color={disabled ? "#d1d5db" : "#6b7280"} />
                 </TouchableOpacity>
 
                 {/* Text input */}
@@ -57,8 +74,8 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
                 {/* Send button */}
                 <TouchableOpacity
                     onPress={handleSend}
-                    disabled={!message.trim() || disabled}
-                    className={`w-10 h-10 ml-2 items-center justify-center rounded-full ${message.trim() && !disabled ? "bg-primary-600" : "bg-gray-300"
+                    disabled={(!message.trim() && !attachment) || disabled}
+                    className={`w-10 h-10 ml-2 items-center justify-center rounded-full ${(message.trim() || attachment) && !disabled ? "bg-primary-600" : "bg-gray-300"
                         }`}
                     activeOpacity={0.7}
                 >
@@ -72,3 +89,4 @@ export default function ChatInput({ onSend, disabled = false }: ChatInputProps) 
         </View>
     );
 }
+

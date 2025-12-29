@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import * as Updates from 'expo-updates';
+import { AlertCircle } from 'lucide-react-native';
 
 interface Props {
   children: React.ReactNode;
@@ -25,7 +26,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // In production, you would log this to Sentry or similar service
     console.error("ErrorBoundary caught an error:", error, errorInfo);
   }
 
@@ -33,7 +33,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
     try {
       await Updates.reloadAsync();
     } catch (e) {
-      // Fallback if expo-updates is not available (e.g. dev client)
       this.setState({ hasError: false, error: null });
     }
   };
@@ -41,20 +40,39 @@ export class ErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <View style={styles.container}>
-          <Text style={styles.icon}>⚠️</Text>
-          <Text style={styles.title}>Oops! Something went wrong.</Text>
-          <Text style={styles.subtitle}>
-            The LLM Council encountered an unexpected issue.
-          </Text>
-          {this.state.error && (
-            <Text style={styles.errorText}>
-              {this.state.error.toString()}
+        <View className="flex-1 items-center justify-center p-8 bg-gray-50">
+          <View className="bg-red-50 p-6 rounded-3xl items-center border border-red-100 shadow-sm">
+            <AlertCircle size={64} color="#ef4444" />
+            <Text className="text-2xl font-bold text-gray-900 mt-6 text-center">
+              Snapshot Error
             </Text>
-          )}
-          <TouchableOpacity style={styles.button} onPress={this.handleReload}>
-            <Text style={styles.buttonText}>Reload Application</Text>
-          </TouchableOpacity>
+            <Text className="text-gray-600 text-center mt-3 text-base">
+              The LLM Council encountered an unexpected issue while processing your request.
+            </Text>
+            
+            {this.state.error && (
+              <View className="mt-6 bg-white p-4 rounded-xl border border-red-200 w-full">
+                <Text className="text-red-500 text-xs font-mono" numberOfLines={5}>
+                  {this.state.error.toString()}
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity 
+              className="mt-8 bg-primary-600 px-8 py-4 rounded-2xl w-full shadow-lg" 
+              onPress={this.handleReload}
+              activeOpacity={0.8}
+            >
+              <Text className="text-white text-center font-bold text-lg">Restart Council</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              className="mt-4" 
+              onPress={() => this.setState({ hasError: false, error: null })}
+            >
+              <Text className="text-primary-600 font-semibold">Try to continue</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
@@ -63,50 +81,3 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  icon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#1f2937',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#ef4444',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 10,
-    backgroundColor: '#fef2f2',
-    padding: 10,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  button: {
-    backgroundColor: '#4f46e5',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

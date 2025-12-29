@@ -11,128 +11,144 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useNavigation } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
-import { useStore, loadConversationFromStorage } from "../../lib/store";
-import { getConversation, sendMessage } from "../../lib/api";
-import type { Message, AssistantMessage, UserMessage, AggregateRanking } from "../../lib/types";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useStore } from "../../lib/store";
+import { sendMessage } from "../../lib/api";
+import type { Message, AssistantMessage, UserMessage } from "../../lib/types";
+import { ExtractedFile } from "../../lib/files";
 import ChatInput from "../../components/ChatInput";
 import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
+import { Id } from "../../convex/_generated/dataModel";
 
 /**
  * Main chat screen for a conversation.
- * Displays messages and handles the 3-stage council response.
+ * Displays messages from Convex and handles the 3-stage council response.
  */
 function ChatScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const navigation = useNavigation();
     const flatListRef = useRef<FlatList>(null);
 
+    // Convex Hooks
+    const conversationId = id as Id<"conversations">;
+    const conversation = useQuery(api.conversations.get, { id: conversationId });
+    const messages = useQuery(api.messages.list, { conversationId });
+    const sendUserMessage = useMutation(api.messages.send);
+    const addAssistantResponse = useMutation(api.messages.addAssistantResponse);
+    const updateTitleInDB = useMutation(api.conversations.updateTitle);
+    const createAttachment = useMutation(api.attachments.create);
+
     const {
-        currentConversation,
-        setCurrentConversation,
-        addMessageToCurrentConversation,
         isProcessing,
         setIsProcessing,
         currentStage,
         setCurrentStage,
         setAggregateRankings,
-        saveConversationToStorage,
-        updateConversationTitle,
         councilModels,
         chairmanModel
     } = useStore();
 
-    const [isLoading, setIsLoading] = useState(true);
     const [pendingResponse, setPendingResponse] = useState<Partial<AssistantMessage> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    // Load conversation on mount
+    // Update header title
     useEffect(() => {
-        const loadConversation = async () => {
-            if (!id) return;
-
-            setIsLoading(true);
-
-            // Try local storage first
-            let conversation = await loadConversationFromStorage(id);
-
-            // Fallback to backend
-            if (!conversation) {
-                try {
-                    conversation = await getConversation(id);
-                } catch (error) {
-                    console.error("Failed to load conversation:", error);
-                }
-            }
-
-            if (conversation) {
-                setCurrentConversation(conversation);
-                navigation.setOptions({ title: conversation.title });
-            }
-
-            setIsLoading(false);
-        };
-
-        loadConversation();
-    }, [id]);
-
-    // Update header title when conversation changes
-    useEffect(() => {
-        if (currentConversation?.title) {
-            navigation.setOptions({ title: currentConversation.title });
+        if (conversation?.title) {
+            navigation.setOptions({ title: conversation.title });
         }
-    }, [currentConversation?.title]);
+    }, [conversation?.title]);
 
-    // Scroll to bottom when new messages arrive
+    // Scroll to bottom
     useEffect(() => {
-        if (flatListRef.current && currentConversation?.messages.length) {
+        if (flatListRef.current && (messages?.length || pendingResponse)) {
             setTimeout(() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
             }, 100);
         }
-    }, [currentConversation?.messages.length, pendingResponse]);
+    }, [messages?.length, pendingResponse]);
 
-    // Send message handler (non-streaming for React Native compatibility)
-    const handleSendMessage = async (content: string) => {
-        if (!id || !currentConversation) return;
+    // Send message handler
+    const handleSendMessage = async (content: string, attachment?: ExtractedFile) => {
+        if (!id || !conversation) return;
 
-        // Add user message immediately
-        const userMessage: UserMessage = { role: "user", content };
-        addMessageToCurrentConversation(userMessage);
+        let attachmentId: Id<"attachments"> | undefined;
 
-        // Start processing
+        // 1. If attachment, save to Convex first
+        if (attachment) {
+            try {
+                attachmentId = await createAttachment({
+                    conversationId,
+                    fileName: attachment.name,
+                    fileType: attachment.type,
+                    extractedText: attachment.text,
+                });
+            } catch (err) {
+                console.error("Failed to save attachment:", err);
+                setError("Failed to upload file attachment.");
+                return;
+            }
+        }
+
+        // 2. Save user message to Convex
+        try {
+            await sendUserMessage({
+                conversationId,
+                content: content || (attachment ? `[Attached File: ${attachment.name}]` : ""),
+                attachmentIds: attachmentId ? [attachmentId] : undefined,
+            });
+        } catch (err) {
+            console.error("Failed to save user message:", err);
+            setError("Failed to save message to cloud.");
+            return;
+        }
+
+        // 3. Start processing
         setIsProcessing(true);
         setCurrentStage(1);
         setPendingResponse({ role: "assistant", stage1: [], stage2: [], stage3: { model: "", response: "" } });
         setError(null);
 
         try {
-            // Load API key from store for BYOK
             const { loadApiKey } = useStore.getState();
             const apiKey = await loadApiKey();
 
-            // Use non-streaming endpoint (React Native doesn't support streaming fetch)
+            // Prepare prompt including extracted text if available
+            let prompt = content;
+            if (attachment) {
+                prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
+            }
+
+            // Call outdoor API for council processing
             const response = await sendMessage(
                 id,
-                content,
+                prompt,
                 apiKey,
                 councilModels.length > 0 ? councilModels : undefined,
                 chairmanModel
             );
 
-            // Update stage indicators progressively for visual feedback
+            // Progressive visual feedback (simulate stages)
             setCurrentStage(2);
             setPendingResponse(prev => ({ ...prev, stage1: response.stage1 }));
-            
-            await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause for UX
+            await new Promise(resolve => setTimeout(resolve, 300));
             
             setCurrentStage(3);
             setPendingResponse(prev => ({ ...prev, stage2: response.stage2 }));
-            
             await new Promise(resolve => setTimeout(resolve, 300));
             
             setPendingResponse(prev => ({ ...prev, stage3: response.stage3 }));
+
+            // Save final assistant response to Convex
+            await addAssistantResponse({
+                conversationId,
+                content: response.stage3.response,
+                stage1: response.stage1,
+                stage2: response.stage2,
+                stage3: response.stage3,
+            });
 
             // Handle aggregate rankings if present
             if (response.metadata?.aggregate_rankings) {
@@ -140,24 +156,15 @@ function ChatScreen() {
             }
 
             // Handle title update
-            if ((response.metadata as any)?.title) {
-                updateConversationTitle(id, (response.metadata as any).title);
+            if ((response.metadata as any)?.title && conversation.title === "New Chat") {
+                await updateTitleInDB({ id: conversationId, title: (response.metadata as any).title });
             }
 
-            // Build final assistant message
-            const assistantMessage: AssistantMessage = {
-                role: "assistant",
-                stage1: response.stage1,
-                stage2: response.stage2,
-                stage3: response.stage3,
-            };
-
-            addMessageToCurrentConversation(assistantMessage);
             setPendingResponse(null);
 
         } catch (err: any) {
-            console.error("Failed to send message:", err);
-            setError(err.message || "Connection failed");
+            console.error("Failed to process message:", err);
+            setError(err.message || "Council connection failed");
             setPendingResponse(null);
         } finally {
             setIsProcessing(false);
@@ -172,28 +179,28 @@ function ChatScreen() {
         </FadeInView>
     );
 
-    // Get messages to display (including pending response)
+    // Get messages to display
     const getDisplayMessages = (): Message[] => {
-        const messages = currentConversation?.messages || [];
+        const displayMessages = [...(messages || [])] as any[];
         if (pendingResponse && isProcessing) {
-            return [...messages, pendingResponse as AssistantMessage];
+            displayMessages.push(pendingResponse as AssistantMessage);
         }
-        return messages;
+        return displayMessages;
     };
 
-    if (isLoading) {
+    if (conversation === undefined || messages === undefined) {
         return (
             <View className="flex-1 items-center justify-center bg-gray-50">
                 <ActivityIndicator size="large" color="#4f46e5" />
-                <Text className="text-gray-500 mt-4">Loading conversation...</Text>
+                <Text className="text-gray-500 mt-4">Connecting to cloud...</Text>
             </View>
         );
     }
 
-    if (!currentConversation) {
+    if (conversation === null) {
         return (
             <View className="flex-1 items-center justify-center bg-gray-50">
-                <Text className="text-gray-500">Conversation not found</Text>
+                <Text className="text-gray-500">Chat session not found</Text>
             </View>
         );
     }
@@ -202,7 +209,7 @@ function ChatScreen() {
         <KeyboardAvoidingView
             className="flex-1 bg-gray-50"
             behavior={Platform.OS === "ios" ? "padding" : "height"}
-            keyboardVerticalOffset={90}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View className="flex-1">
@@ -211,7 +218,7 @@ function ChatScreen() {
                     <FlatList
                         ref={flatListRef}
                         data={getDisplayMessages()}
-                        keyExtractor={(_, index) => index.toString()}
+                        keyExtractor={(item, index) => (item as any)._id || index.toString()}
                         renderItem={renderMessage}
                         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
                         ListEmptyComponent={
