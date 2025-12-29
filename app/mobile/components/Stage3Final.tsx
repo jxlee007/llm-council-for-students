@@ -10,6 +10,7 @@ interface Stage3FinalProps {
 /**
  * Chairman's final answer card.
  * Green gradient background with prominent styling.
+ * Styled for Dark Mode.
  */
 export default function Stage3Final({ response }: Stage3FinalProps) {
     if (!response) {
@@ -28,17 +29,17 @@ export default function Stage3Final({ response }: Stage3FinalProps) {
     };
 
     return (
-        <View className="bg-emerald-50 rounded-xl border border-emerald-200 overflow-hidden">
+        <View className="bg-emerald-950/30 rounded-xl border border-emerald-900 overflow-hidden">
             {/* Header */}
-            <View className="flex-row items-center px-4 py-3 bg-emerald-100 border-b border-emerald-200">
+            <View className="flex-row items-center px-4 py-3 bg-emerald-900/50 border-b border-emerald-900">
                 <View className="w-8 h-8 rounded-full bg-stage3 items-center justify-center mr-3">
                     <Crown size={18} color="#fff" />
                 </View>
                 <View className="flex-1">
-                    <Text className="text-emerald-900 font-bold text-base">
+                    <Text className="text-emerald-100 font-bold text-base">
                         Chairman's Final Answer
                     </Text>
-                    <Text className="text-emerald-700 text-xs">
+                    <Text className="text-emerald-400 text-xs">
                         Synthesized by {getModelShortName(response.model)}
                     </Text>
                 </View>
@@ -48,45 +49,45 @@ export default function Stage3Final({ response }: Stage3FinalProps) {
             <ScrollView className="p-4 max-h-96">
                 <Markdown
                     style={{
-                        body: { color: "#064e3b", fontSize: 15, lineHeight: 22 },
+                        body: { color: "#ecfdf5", fontSize: 15, lineHeight: 22 },
                         code_inline: {
-                            backgroundColor: "#d1fae5",
+                            backgroundColor: "#064e3b",
                             paddingHorizontal: 4,
                             borderRadius: 4,
-                            color: "#065f46",
+                            color: "#6ee7b7",
                         },
                         code_block: {
-                            backgroundColor: "#d1fae5",
+                            backgroundColor: "#064e3b",
                             padding: 12,
                             borderRadius: 8,
-                            color: "#065f46",
+                            color: "#6ee7b7",
                         },
                         heading1: {
                             fontSize: 20,
                             fontWeight: "bold",
                             marginBottom: 10,
-                            color: "#064e3b",
+                            color: "#d1fae5",
                         },
                         heading2: {
                             fontSize: 18,
                             fontWeight: "bold",
                             marginBottom: 8,
-                            color: "#064e3b",
+                            color: "#d1fae5",
                         },
                         heading3: {
                             fontSize: 16,
                             fontWeight: "bold",
                             marginBottom: 6,
-                            color: "#064e3b",
+                            color: "#d1fae5",
                         },
                         paragraph: { marginBottom: 10 },
                         bullet_list: { marginLeft: 8 },
                         ordered_list: { marginLeft: 8 },
                         list_item: { marginBottom: 4 },
-                        strong: { fontWeight: "bold", color: "#065f46" },
+                        strong: { fontWeight: "bold", color: "#34d399" },
                         em: { fontStyle: "italic" },
                         blockquote: {
-                            backgroundColor: "#d1fae5",
+                            backgroundColor: "#064e3b",
                             borderLeftWidth: 4,
                             borderLeftColor: "#10b981",
                             paddingLeft: 12,

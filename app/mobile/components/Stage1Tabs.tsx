@@ -10,6 +10,7 @@ interface Stage1TabsProps {
 /**
  * Horizontal ScrollView with tabs showing each model's response.
  * Displays model name labels with active tab indicator.
+ * Styled for Dark Mode.
  */
 export default function Stage1Tabs({ responses }: Stage1TabsProps) {
     const [activeIndex, setActiveIndex] = useState(0);
@@ -17,14 +18,13 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
     if (!responses || responses.length === 0) {
         return (
             <View className="p-4 items-center">
-                <Text className="text-gray-500">No responses available</Text>
+                <Text className="text-muted-foreground">No responses available</Text>
             </View>
         );
     }
 
     // Extract model short name from full identifier
     const getModelShortName = (model: string) => {
-        // e.g., "google/gemini-2.5-flash" -> "Gemini 2.5 Flash"
         const parts = model.split("/");
         const modelName = parts[parts.length - 1];
         return modelName
@@ -50,13 +50,13 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
                         key={response.model}
                         onPress={() => setActiveIndex(index)}
                         className={`px-4 py-2 rounded-full mr-2 ${index === activeIndex
-                                ? "bg-stage1"
-                                : "bg-gray-100"
+                                ? "bg-primary"
+                                : "bg-secondary"
                             }`}
                         activeOpacity={0.7}
                     >
                         <Text
-                            className={`text-sm font-medium ${index === activeIndex ? "text-white" : "text-gray-600"
+                            className={`text-sm font-medium ${index === activeIndex ? "text-primary-foreground" : "text-muted-foreground"
                                 }`}
                             numberOfLines={1}
                         >
@@ -67,17 +67,17 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
             </ScrollView>
 
             {/* Response content */}
-            <View className="bg-gray-50 rounded-lg p-3 max-h-80">
+            <View className="bg-secondary/30 rounded-lg p-3 max-h-80 border border-border">
                 <ScrollView showsVerticalScrollIndicator={true}>
                     <Markdown
                         style={{
-                            body: { color: "#1f2937", fontSize: 14, lineHeight: 20 },
-                            code_inline: { backgroundColor: "#e5e7eb", paddingHorizontal: 4, borderRadius: 4 },
-                            code_block: { backgroundColor: "#f3f4f6", padding: 8, borderRadius: 4 },
-                            heading1: { fontSize: 18, fontWeight: "bold", marginBottom: 8 },
-                            heading2: { fontSize: 16, fontWeight: "bold", marginBottom: 6 },
-                            heading3: { fontSize: 14, fontWeight: "bold", marginBottom: 4 },
-                            paragraph: { marginBottom: 8 },
+                            body: { color: "#ffffff", fontSize: 14, lineHeight: 20 },
+                            code_inline: { backgroundColor: "#1a1f26", paddingHorizontal: 4, borderRadius: 4, color: "#e5e7eb" },
+                            code_block: { backgroundColor: "#1a1f26", padding: 8, borderRadius: 4, color: "#e5e7eb" },
+                            heading1: { fontSize: 18, fontWeight: "bold", marginBottom: 8, color: "#ffffff" },
+                            heading2: { fontSize: 16, fontWeight: "bold", marginBottom: 6, color: "#ffffff" },
+                            heading3: { fontSize: 14, fontWeight: "bold", marginBottom: 4, color: "#ffffff" },
+                            paragraph: { marginBottom: 8, color: "#d1d5db" },
                             bullet_list: { marginLeft: 8 },
                             ordered_list: { marginLeft: 8 },
                         }}
@@ -89,10 +89,10 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
 
             {/* Model indicator */}
             <View className="mt-2 flex-row items-center justify-between">
-                <Text className="text-xs text-gray-400">
+                <Text className="text-xs text-muted-foreground">
                     Model: {activeResponse.model}
                 </Text>
-                <Text className="text-xs text-gray-400">
+                <Text className="text-xs text-muted-foreground">
                     {activeIndex + 1} of {responses.length}
                 </Text>
             </View>

@@ -15,7 +15,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useUIStore } from "../../lib/store";
 import { sendMessage } from "../../lib/api";
-import type { Message, AssistantMessage, UserMessage } from "../../lib/types";
+import type { Message, AssistantMessage, UserMessage, AggregateRanking } from "../../lib/types";
 import { ExtractedFile } from "../../lib/files";
 import ChatInput from "../../components/ChatInput";
 import MessageBubble from "../../components/MessageBubble";
@@ -26,6 +26,7 @@ import { Id } from "../../convex/_generated/dataModel";
 /**
  * Main chat screen for a conversation.
  * Displays messages from Convex and handles the 3-stage council response.
+ * Styled for Dark Mode.
  */
 function ChatScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,15 +43,13 @@ function ChatScreen() {
     const createAttachment = useMutation(api.attachments.create);
 
     const {
-        isProcessing,
-        setIsProcessing,
-        currentStage,
-        setCurrentStage,
-        setAggregateRankings,
         councilModels,
         chairmanModel
     } = useUIStore();
 
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [currentStage, setCurrentStage] = useState<0 | 1 | 2 | 3>(0);
+    const [aggregateRankings, setAggregateRankings] = useState<AggregateRanking[]>([]);
     const [pendingResponse, setPendingResponse] = useState<Partial<AssistantMessage> | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +108,7 @@ function ChatScreen() {
         setIsProcessing(true);
         setCurrentStage(1);
         setPendingResponse({ role: "assistant", stage1: [], stage2: [], stage3: { model: "", response: "" } });
+        setAggregateRankings([]); // Reset rankings for new message
         setError(null);
 
         try {
@@ -175,7 +175,12 @@ function ChatScreen() {
     // Render message item
     const renderMessage = ({ item, index }: { item: Message; index: number }) => (
         <FadeInView delay={index > 0 ? 0 : 300}>
-            <MessageBubble message={item} />
+            <MessageBubble
+                message={item}
+                aggregateRankings={
+                    (item as any) === pendingResponse ? aggregateRankings : undefined
+                }
+            />
         </FadeInView>
     );
 
@@ -190,24 +195,24 @@ function ChatScreen() {
 
     if (conversation === undefined || messages === undefined) {
         return (
-            <View className="flex-1 items-center justify-center bg-gray-50">
-                <ActivityIndicator size="large" color="#4f46e5" />
-                <Text className="text-gray-500 mt-4">Connecting to cloud...</Text>
+            <View className="flex-1 items-center justify-center bg-background">
+                <ActivityIndicator size="large" color="#20c997" />
+                <Text className="text-muted-foreground mt-4">Connecting to cloud...</Text>
             </View>
         );
     }
 
     if (conversation === null) {
         return (
-            <View className="flex-1 items-center justify-center bg-gray-50">
-                <Text className="text-gray-500">Chat session not found</Text>
+            <View className="flex-1 items-center justify-center bg-background">
+                <Text className="text-muted-foreground">Chat session not found</Text>
             </View>
         );
     }
 
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-gray-50"
+            className="flex-1 bg-background"
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
         >
@@ -223,8 +228,13 @@ function ChatScreen() {
                         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
                         ListEmptyComponent={
                             <View className="flex-1 items-center justify-center py-20">
-                                <MessageSquare size={64} color="#d1d5db" />
-                                <Text className="text-gray-500 text-center mt-4">
+                                <View className="w-24 h-24 bg-secondary rounded-full items-center justify-center mb-6">
+                                    <MessageSquare size={48} color="#20c997" />
+                                </View>
+                                <Text className="text-foreground text-center mt-4 text-lg font-bold">
+                                    Ask the Council
+                                </Text>
+                                <Text className="text-muted-foreground text-center mt-2 px-8">
                                     Ask a question to get answers from the LLM Council
                                 </Text>
                             </View>
@@ -233,10 +243,10 @@ function ChatScreen() {
 
                     {/* Processing indicator */}
                     {isProcessing && (
-                        <View className="px-4 py-2 bg-primary-50 border-t border-primary-100">
+                        <View className="px-4 py-2 bg-secondary border-t border-border">
                             <View className="flex-row items-center">
-                                <ActivityIndicator size="small" color="#4f46e5" />
-                                <Text className="ml-2 text-primary-700 text-sm">
+                                <ActivityIndicator size="small" color="#20c997" />
+                                <Text className="ml-2 text-primary text-sm font-medium">
                                     {currentStage === 1 && "Stage 1: Collecting responses..."}
                                     {currentStage === 2 && "Stage 2: Council is deliberating..."}
                                     {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}

@@ -4,20 +4,25 @@ import { MessageSquare, Users, Settings } from "lucide-react-native";
 /**
  * Tab layout for the main app navigation.
  * Contains the chat list and settings tabs.
+ * Styled for Dark Mode parity with Proto.
  */
 export default function TabLayout() {
     return (
         <Tabs
             screenOptions={{
-                tabBarActiveTintColor: "#4f46e5",
-                tabBarInactiveTintColor: "#9ca3af",
+                tabBarActiveTintColor: "#20c997",
+                tabBarInactiveTintColor: "#6b7280",
                 tabBarStyle: {
-                    backgroundColor: "#fff",
+                    backgroundColor: "#1a1f26",
                     borderTopWidth: 1,
-                    borderTopColor: "#e5e7eb",
+                    borderTopColor: "rgba(255, 255, 255, 0.1)",
                 },
                 headerStyle: {
-                    backgroundColor: "#4f46e5",
+                    backgroundColor: "#0f1419",
+                    shadowColor: "transparent",
+                    elevation: 0,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "rgba(255, 255, 255, 0.1)",
                 },
                 headerTintColor: "#fff",
                 headerTitleStyle: {
