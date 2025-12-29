@@ -8,9 +8,11 @@ import OfflineBanner from "../components/OfflineBanner";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "../lib/tokenCache";
 import { ConvexReactClient, useConvexAuth } from "convex/react";
+import { useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { View, Text, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { api } from "../convex/_generated/api";
 
 // Initialize Convex client
 const convex = new ConvexReactClient(
@@ -23,6 +25,18 @@ function AppNavigation() {
     const { isLoading, isAuthenticated } = useConvexAuth();
     const segments = useSegments();
     const router = useRouter();
+    
+    // Ensure user record exists in Convex on first login
+    const getOrCreateUser = useMutation(api.users.getOrCreateUser);
+
+    // Sync user data when authenticated
+    useEffect(() => {
+        if (isAuthenticated) {
+            getOrCreateUser()
+                .then(() => console.log("[User Sync] User record ensured"))
+                .catch((err) => console.error("[User Sync] Failed:", err));
+        }
+    }, [isAuthenticated]);
 
     useEffect(() => {
         // Wait until auth state is fully resolved

@@ -1,4 +1,4 @@
-import { internalMutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 /**
@@ -31,6 +31,38 @@ export const getCurrent = query({
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
+    return user;
+  },
+});
+
+// Get or create user (called on first login)
+// This ensures user records exist for OAuth users who bypass webhooks
+export const getOrCreateUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    // Check if user exists
+    let user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) {
+      // Create new user from JWT claims
+      const userId = await ctx.db.insert("users", {
+        clerkId: identity.subject,
+        email: identity.email || "",
+        name: identity.name,
+        isPro: false,
+        createdAt: Date.now(),
+      });
+      user = await ctx.db.get(userId);
+    }
+
     return user;
   },
 });
