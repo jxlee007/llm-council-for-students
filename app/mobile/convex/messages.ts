@@ -1,5 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import { checkRateLimit } from "./rateLimits";
 
 /**
  * Messages API functions
@@ -43,6 +44,13 @@ export const send = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Unauthorized");
+    }
+
+    // Rate limit: 10 messages per minute per conversation
+    await checkRateLimit(ctx, args.conversationId, "sendMessage", 10, 60 * 1000);
+
+    if (args.content.length > 5000) {
+      throw new Error("Message content exceeds 5000 characters");
     }
 
     // Verify conversation ownership
