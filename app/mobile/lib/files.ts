@@ -37,10 +37,10 @@ export async function pickAndExtractText(): Promise<ExtractedFile | null> {
 
     // Read file content
     const content = await FileSystem.readAsStringAsync(file.uri);
-    
+
     // Truncate if necessary
-    const truncatedContent = content.length > MAX_TEXT_CHARS 
-      ? content.slice(0, MAX_TEXT_CHARS) 
+    const truncatedContent = content.length > MAX_TEXT_CHARS
+      ? content.slice(0, MAX_TEXT_CHARS)
       : content;
 
     return {

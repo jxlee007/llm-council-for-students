@@ -14,16 +14,9 @@ from .council import run_full_council, generate_conversation_title, stage1_colle
 
 app = FastAPI(title="LLM Council API")
 
-# Enable CORS for production hardening
-origins = [
-    "http://localhost:8081",      # Expo Metro Bundler
-    "https://llmcouncil.com",     # Landing Page
-    "https://app.llmcouncil.com"  # Future Web App
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -90,7 +83,9 @@ async def get_conversation(conversation_id: str):
     """Get a specific conversation with all its messages."""
     conversation = storage.get_conversation(conversation_id)
     if conversation is None:
-        raise HTTPException(status_code=404, detail="Conversation not found")
+        # Auto-create for new Convex IDs on GET as well
+        print(f"[Auto-create-GET] Conversation {conversation_id} not found, creating...")
+        conversation = storage.create_conversation(conversation_id)
     return conversation
 
 

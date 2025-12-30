@@ -102,7 +102,10 @@ export default function Stage2Rankings({ rankings, aggregateRankings = [] }: Sta
                 <Text className="text-sm font-semibold text-foreground mb-2">
                     Individual Model Votes
                 </Text>
-                <ScrollView className="max-h-40">
+                <ScrollView 
+                    className="max-h-60"
+                    nestedScrollEnabled={true}
+                >
                     {rankings.map((ranking) => (
                         <View
                             key={ranking.model}
@@ -114,7 +117,7 @@ export default function Stage2Rankings({ rankings, aggregateRankings = [] }: Sta
                             <View className="flex-row flex-wrap">
                                 {ranking.parsed_ranking.map((label, idx) => (
                                     <View
-                                        key={label}
+                                        key={`${ranking.model}-${idx}-${label}`}
                                         className={`px-2 py-1 rounded mr-1 mb-1 ${getRankStyle(idx + 1).bg
                                             }`}
                                     >
