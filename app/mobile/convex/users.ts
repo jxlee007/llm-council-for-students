@@ -96,6 +96,16 @@ export const upsertFromClerk = internalMutation({
       createdAt: Date.now(),
     });
 
+    // Audit log
+    await ctx.db.insert("audit_logs", {
+      userId: userId, // New user ID
+      action: "user.upsert_webhook",
+      resourceId: userId,
+      resourceType: "user",
+      timestamp: Date.now(),
+      success: true,
+    });
+
     return userId;
   },
 });

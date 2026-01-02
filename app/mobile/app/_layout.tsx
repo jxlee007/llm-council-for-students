@@ -1,12 +1,13 @@
 import "../global.css";
 import { useEffect } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { View, ActivityIndicator, Text, SafeAreaView } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { AlertTriangle } from "lucide-react-native";
 
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import OfflineBanner from "../components/OfflineBanner";
@@ -27,9 +28,22 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 function AppNavigation() {
     const { isLoading, isAuthenticated } = useConvexAuth();
     const segments = useSegments();
+    const router = useRouter();
 
     // ✅ CRITICAL: Remove useRouter() - use direct navigation instead
     const getOrCreateUser = useMutation(api.users.getOrCreateUser);
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        const inAuthGroup = segments[0] === '(auth)';
+
+        if (!isAuthenticated && !inAuthGroup) {
+            router.replace('/(auth)/login');
+        } else if (isAuthenticated && inAuthGroup) {
+            router.replace('/(tabs)');
+        }
+    }, [isAuthenticated, segments, isLoading, router]);
 
     useEffect(() => {
         if (isAuthenticated) {

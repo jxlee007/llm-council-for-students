@@ -132,5 +132,15 @@ export const remove = mutation({
 
     // Delete the conversation
     await ctx.db.delete(args.id);
+
+    // Audit log
+    await ctx.db.insert("audit_logs", {
+      userId: identity.subject,
+      action: "conversation.delete",
+      resourceId: args.id,
+      resourceType: "conversation",
+      success: true,
+      timestamp: Date.now(),
+    });
   },
 });
