@@ -88,4 +88,15 @@ export default defineSchema({
     metadata: v.any(),
     createdAt: v.number(),
   }).index("by_event", ["eventType"]),
+
+  // Audit logs for sensitive actions
+  audit_logs: defineTable({
+    userId: v.string(),
+    action: v.string(),
+    resourceId: v.optional(v.string()),
+    resourceType: v.string(),
+    timestamp: v.number(),
+    success: v.boolean(),
+    error: v.optional(v.string()),
+  }).index("by_user", ["userId"]),
 });

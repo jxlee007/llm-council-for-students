@@ -10,9 +10,10 @@ import type {
     Model,
 } from './types';
 import * as Network from 'expo-network';
+import { Config } from './config';
 
 // Backend URL - uses env var for production, fallback to localhost
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
+const API_BASE_URL = Config.apiUrl;
 
 /**
  * Generic fetch wrapper with error handling.

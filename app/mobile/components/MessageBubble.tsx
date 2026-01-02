@@ -2,6 +2,7 @@ import { View, Text, ActivityIndicator } from "react-native";
 import { Bot } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
 import CouncilResponse from "./CouncilResponse";
+import React from "react";
 
 interface MessageBubbleProps {
     message: Message;
@@ -13,7 +14,7 @@ interface MessageBubbleProps {
  * User messages: Right-aligned, primary color, rounded-tr-none.
  * Assistant messages: Left-aligned, renders council visualization.
  */
-export default function MessageBubble({ message, aggregateRankings }: MessageBubbleProps) {
+function MessageBubble({ message, aggregateRankings }: MessageBubbleProps) {
     if (message.role === "user") {
         return (
             <View className="flex-row justify-end mb-4">
@@ -58,3 +59,5 @@ export default function MessageBubble({ message, aggregateRankings }: MessageBub
         </View>
     );
 }
+
+export default React.memo(MessageBubble);

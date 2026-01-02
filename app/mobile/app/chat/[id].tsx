@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     View,
     Text,
@@ -122,16 +122,14 @@ function ChatScreen() {
                 chairmanModel
             );
 
-            // Progressive visual feedback (simulate stages)
-            setCurrentStage(2);
-            setPendingResponse(prev => ({ ...prev, stage1: response.stage1 }));
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
+            // Real progress based on backend response
             setCurrentStage(3);
-            setPendingResponse(prev => ({ ...prev, stage2: response.stage2 }));
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            setPendingResponse(prev => ({ ...prev, stage3: response.stage3 }));
+            setPendingResponse({
+                role: "assistant",
+                stage1: response.stage1,
+                stage2: response.stage2,
+                stage3: response.stage3,
+            });
 
             // Save final assistant response to Convex
             await addAssistantResponse({
@@ -165,7 +163,7 @@ function ChatScreen() {
     };
 
     // Render message item
-    const renderMessage = ({ item, index }: { item: Message; index: number }) => (
+    const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => (
         <FadeInView delay={index > 0 ? 0 : 300}>
             <MessageBubble
                 message={item}
@@ -174,7 +172,7 @@ function ChatScreen() {
                 }
             />
         </FadeInView>
-    );
+    ), [pendingResponse, aggregateRankings]);
 
     // Get messages to display
     const getDisplayMessages = (): Message[] => {
@@ -218,6 +216,11 @@ function ChatScreen() {
                         keyExtractor={(item, index) => (item as any)._id || index.toString()}
                         renderItem={renderMessage}
                         contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+                        removeClippedSubviews={true}
+                        maxToRenderPerBatch={10}
+                        updateCellsBatchingPeriod={50}
+                        initialNumToRender={15}
+                        windowSize={21}
                         ListEmptyComponent={
                             <View className="flex-1 items-center justify-center py-20">
                                 <View className="w-24 h-24 bg-secondary rounded-full items-center justify-center mb-6">

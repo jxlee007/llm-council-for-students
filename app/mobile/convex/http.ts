@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Webhook } from "svix";
 
 const http = httpRouter();
 
@@ -13,15 +14,32 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const payloadString = await request.text();
-    console.log("Clerk Webhook received:", payloadString);
     const headerPayload = request.headers;
 
-    // TODO: Verify webhook signature using Svix
-    // For now, we'll parse the payload and sync
-    // In production, you MUST verify the signature.
-
     try {
-      const { data, type } = JSON.parse(payloadString);
+      const svixId = headerPayload.get("svix-id");
+      const svixTimestamp = headerPayload.get("svix-timestamp");
+      const svixSignature = headerPayload.get("svix-signature");
+
+      if (!svixId || !svixTimestamp || !svixSignature) {
+        return new Response("Missing svix headers", { status: 400 });
+      }
+
+      const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        console.error("Missing CLERK_WEBHOOK_SECRET env variable");
+        return new Response("Server config error", { status: 500 });
+      }
+
+      const wh = new Webhook(webhookSecret);
+      // verify throws on failure
+      const evt = wh.verify(payloadString, {
+        "svix-id": svixId,
+        "svix-timestamp": svixTimestamp,
+        "svix-signature": svixSignature,
+      }) as any;
+
+      const { data, type } = evt;
 
       switch (type) {
         case "user.created":
