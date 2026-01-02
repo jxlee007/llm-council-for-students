@@ -27,9 +27,8 @@ const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
 function AppNavigation() {
     const { isLoading, isAuthenticated } = useConvexAuth();
     const segments = useSegments();
-    const router = useRouter();
 
-    // Ensure user record exists in Convex on first login
+    // ✅ CRITICAL: Remove useRouter() - use direct navigation instead
     const getOrCreateUser = useMutation(api.users.getOrCreateUser);
 
     useEffect(() => {
@@ -38,26 +37,9 @@ function AppNavigation() {
                 .then(() => console.log("[User Sync] User record ensured"))
                 .catch((err) => console.error("[User Sync] Failed:", err));
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, getOrCreateUser]);
 
-    useEffect(() => {
-        if (isLoading) return;
-
-        // segments[0] is "(auth)" or "(tabs)" or "chat"
-        const inAuthGroup = segments[0] === "(auth)";
-
-        if (!isAuthenticated && !inAuthGroup) {
-            // Redirect to Login if not authenticated
-            console.log("[Auth Guard] Redirecting to (auth)/login");
-            router.replace("/(auth)/login");
-        } else if (isAuthenticated && inAuthGroup) {
-            // Redirect to Tabs if authenticated
-            console.log("[Auth Guard] Redirecting to (tabs)");
-            router.replace("/(tabs)");
-        }
-    }, [isAuthenticated, segments, isLoading]);
-
-    // Show full-screen loading state while auth is being resolved
+    // ✅ SIMPLIFIED: No useRouter() - let Stack handle redirects naturally
     if (isLoading) {
         return (
             <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#0f1419" }}>
@@ -67,8 +49,6 @@ function AppNavigation() {
         );
     }
 
-    // ✅ ALWAYS return a Stack. NO DIRECT SCREEN RENDERS.
-    // The Router will automatically render the correct screen based on the URL.
     return (
         <Stack
             screenOptions={{

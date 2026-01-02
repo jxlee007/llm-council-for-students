@@ -1,5 +1,6 @@
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
+// Modern Expo SDK 54 FileSystem API - uses File object (Web standard Blob interface)
+import { File } from "expo-file-system";
 import { Alert } from "react-native";
 
 export interface ExtractedFile {
@@ -15,6 +16,12 @@ const MAX_TEXT_CHARS = 50000;
 /**
  * Utility to pick a file and extract its text content.
  * Supports .txt, .md, .csv, and other text-based formats.
+ * 
+ * Migration Notes (SDK 54):
+ * - OLD: FileSystem.readAsStringAsync(uri) - functional API
+ * - NEW: new File(uri).text() - object-oriented API, follows Web Blob interface
+ * - Both read files as UTF-8 text by default, no semantic difference
+ * - New API is optimized for Expo's New Architecture
  */
 export async function pickAndExtractText(): Promise<ExtractedFile | null> {
   try {
@@ -35,8 +42,10 @@ export async function pickAndExtractText(): Promise<ExtractedFile | null> {
       return null;
     }
 
-    // Read file content
-    const content = await FileSystem.readAsStringAsync(file.uri);
+    // Read file content using modern Expo SDK 54 File API
+    // Creates a File object and reads as UTF-8 text (follows Web Blob interface)
+    const fileHandle = new File(file.uri);
+    const content = await fileHandle.text();
 
     // Truncate if necessary
     const truncatedContent = content.length > MAX_TEXT_CHARS

@@ -9,7 +9,7 @@ import {
     TouchableWithoutFeedback,
     Keyboard,
 } from "react-native";
-import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -30,7 +30,6 @@ import { Id } from "../../convex/_generated/dataModel";
  */
 function ChatScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const navigation = useNavigation();
     const flatListRef = useRef<FlatList>(null);
 
     // Convex Hooks
@@ -52,13 +51,6 @@ function ChatScreen() {
     const [aggregateRankings, setAggregateRankings] = useState<AggregateRanking[]>([]);
     const [pendingResponse, setPendingResponse] = useState<Partial<AssistantMessage> | null>(null);
     const [error, setError] = useState<string | null>(null);
-
-    // Update header title
-    useEffect(() => {
-        if (conversation?.title) {
-            navigation.setOptions({ title: conversation.title });
-        }
-    }, [conversation?.title]);
 
     // Scroll to bottom
     useEffect(() => {

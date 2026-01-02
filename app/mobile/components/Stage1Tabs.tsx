@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { 
-    View, 
+    View,
     Text, 
     ScrollView, 
-    TouchableOpacity, 
+    Pressable,
     Dimensions,
     Platform 
 } from "react-native";
@@ -62,7 +62,7 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
                 bounces
             >
                 {responses.map((response, index) => (
-                    <TouchableOpacity
+                    <Pressable
                         key={response.model} // ✅ Unique key
                         onPress={() => setActiveIndex(index)}
                         className={`px-6 py-3 rounded-2xl mr-2 min-w-[120px] ${
@@ -70,7 +70,6 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
                                 ? "bg-primary shadow-md shadow-primary/25"
                                 : "bg-secondary/50 hover:bg-secondary"
                         }`}
-                        activeOpacity={0.8}
                     >
                         <Text
                             className={`text-sm font-semibold text-center ${
@@ -82,7 +81,7 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
                         >
                             {getModelShortName(response.model)}
                         </Text>
-                    </TouchableOpacity>
+                    </Pressable>
                 ))}
             </ScrollView>
 
