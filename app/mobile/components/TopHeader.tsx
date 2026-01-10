@@ -1,6 +1,13 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { MessageSquare, Settings, Home, ArrowLeft, ArrowRight } from "lucide-react-native";
+import {
+  MessageSquare,
+  Settings,
+  Home,
+  ArrowLeft,
+  ArrowRight,
+  Landmark,
+} from "lucide-react-native";
 import { useRouter, usePathname } from "expo-router";
 
 /**
@@ -42,21 +49,21 @@ export default function TopHeader(props: any) {
       ) : (
         <TouchableOpacity
           onPress={() => {
-            if (isSettings)
-              router.push("/(tabs)"); // Back to home from settings
+            if (isSettings || isCouncil)
+              router.push("/(tabs)"); // Back to home from settings or council
             else if (isHome) router.push("/(tabs)/history");
             else router.push("/(tabs)/settings");
           }}
           className="w-14 h-14 items-center justify-center rounded-full bg-[#1a1f26] border border-[#ffffff1a]"
           accessibilityLabel={
-            isSettings
+            isSettings || isCouncil
               ? "Back to Home"
               : isHome
-                ? "Go to Chat"
+                ? "Go to Chat History"
                 : "Go to Settings"
           }
         >
-          {isSettings ? (
+          {isSettings || isCouncil ? (
             <ArrowLeft size={20} color="#9ca3af" />
           ) : isHome ? (
             <MessageSquare size={20} color="#9ca3af" />
@@ -80,21 +87,28 @@ export default function TopHeader(props: any) {
         >
           <ArrowRight size={20} color="#9ca3af" />
         </TouchableOpacity>
-      ) : (
+      ) : isHome ? (
         <TouchableOpacity
-          onPress={() => {
-            if (isHome) router.push("/(tabs)/settings");
-            else router.push("/(tabs)/history");
-          }}
+          onPress={() => router.push("/(tabs)/configure")}
           className="w-14 h-14 items-center justify-center rounded-full bg-[#1a1f26] border border-[#ffffff1a]"
-          accessibilityLabel={isHome ? "Go to Settings" : "Go to Chat"}
+          accessibilityLabel="Go to Council"
         >
-          {isHome ? (
-            <Settings size={20} color="#9ca3af" />
-          ) : (
-            <MessageSquare size={20} color="#9ca3af" />
-          )}
+          <Landmark size={20} color="#9ca3af" />
         </TouchableOpacity>
+      ) : isCouncil ? (
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)/settings")}
+          className="w-14 h-14 items-center justify-center rounded-full bg-[#1a1f26] border border-[#ffffff1a]"
+          accessibilityLabel="Go to Settings"
+        >
+          <Settings size={20} color="#9ca3af" />
+        </TouchableOpacity>
+      ) : (
+        // Fallback or other screens (e.g. Chat Detail logic if managed here? currently [id].tsx uses default header or no header?)
+        // Assuming [id] might use this header if registered in _layout, but typically [id] is Stack in root?
+        // Wait, [id].tsx is a root Stack screen, not in (tabs). So it has its own header usually.
+        // This TopHeader is mainly for (tabs) screens.
+        <View className="w-14 h-14" />
       )}
     </View>
   );
