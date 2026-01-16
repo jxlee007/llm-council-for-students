@@ -40,8 +40,8 @@ gnome-terminal \
   --title="LLM Council - Expo" \
   -- bash -c "
     echo 'Starting Expo (Mobile App)...';
-    cd \"$ROOT_DIR/app\";
-    expo start;
+    cd \"$ROOT_DIR/mobile\";
+    npx expo start;
     exec bash
   "
 

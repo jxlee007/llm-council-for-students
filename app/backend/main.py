@@ -1,32 +1,65 @@
-"""FastAPI backend for LLM Council."""
+"""FastAPI backend for LLM Council.
 
-from fastapi import FastAPI, HTTPException, Header
+This API provides LLM computation endpoints only. All data persistence
+is handled by Convex on the client side.
+"""
+
+from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import uuid
 import json
 import asyncio
 
-from . import storage
-from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .council import (
+    run_full_council,
+    generate_conversation_title,
+    stage1_collect_responses,
+    stage2_collect_rankings,
+    stage3_synthesize_final,
+    calculate_aggregate_rankings,
+)
+from .errors import CouncilException, APIError, ErrorCode
 
-app = FastAPI(title="LLM Council API")
+app = FastAPI(title="LLM Council API", version="1.0.0")
 
+# CORS configuration - restrict in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # TODO: Restrict to specific origins in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-class CreateConversationRequest(BaseModel):
-    """Request to create a new conversation."""
-    pass
+# ============================================================================
+# Error Handling
+# ============================================================================
 
+@app.exception_handler(CouncilException)
+async def council_exception_handler(request: Request, exc: CouncilException):
+    """Handle structured council exceptions."""
+    status_code = 400
+    if exc.code in [ErrorCode.INTERNAL_ERROR, ErrorCode.PROVIDER_ERROR]:
+        status_code = 500
+    elif exc.code == ErrorCode.RATE_LIMIT_EXCEEDED:
+        status_code = 429
+    
+    return JSONResponse(
+        status_code=status_code,
+        content=APIError(
+            error_code=exc.code,
+            message=exc.message,
+            details=exc.details
+        ).model_dump()
+    )
+
+
+# ============================================================================
+# Request/Response Models
+# ============================================================================
 
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
@@ -35,26 +68,14 @@ class SendMessageRequest(BaseModel):
     chairman_model: Optional[str] = None
 
 
-class ConversationMetadata(BaseModel):
-    """Conversation metadata for list view."""
-    id: str
-    created_at: str
-    title: str
-    message_count: int
-
-
-class Conversation(BaseModel):
-    """Full conversation with all messages."""
-    id: str
-    created_at: str
-    title: str
-    messages: List[Dict[str, Any]]
-
+# ============================================================================
+# Endpoints
+# ============================================================================
 
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "service": "LLM Council API"}
+    return {"status": "ok", "service": "LLM Council API", "version": "1.0.0"}
 
 
 @app.get("/api/models/free")
@@ -62,31 +83,6 @@ async def get_free_models_endpoint():
     """Get list of available free models from OpenRouter."""
     from .openrouter import get_free_models
     return await get_free_models()
-
-
-@app.get("/api/conversations", response_model=List[ConversationMetadata])
-async def list_conversations():
-    """List all conversations (metadata only)."""
-    return storage.list_conversations()
-
-
-@app.post("/api/conversations", response_model=Conversation)
-async def create_conversation(request: CreateConversationRequest):
-    """Create a new conversation."""
-    conversation_id = str(uuid.uuid4())
-    conversation = storage.create_conversation(conversation_id)
-    return conversation
-
-
-@app.get("/api/conversations/{conversation_id}", response_model=Conversation)
-async def get_conversation(conversation_id: str):
-    """Get a specific conversation with all its messages."""
-    conversation = storage.get_conversation(conversation_id)
-    if conversation is None:
-        # Auto-create for new Convex IDs on GET as well
-        print(f"[Auto-create-GET] Conversation {conversation_id} not found, creating...")
-        conversation = storage.create_conversation(conversation_id)
-    return conversation
 
 
 @app.post("/api/conversations/{conversation_id}/message")
@@ -102,21 +98,36 @@ async def send_message(
     Note: This endpoint does NOT persist messages - Convex handles persistence.
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
-    # Run the 3-stage council process with user's API key
-    stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content,
-        council_members=request.council_members,
-        chairman_model=request.chairman_model,
-        api_key=x_openrouter_key
-    )
+    if not x_openrouter_key:
+        raise CouncilException(
+            code=ErrorCode.MISSING_API_KEY,
+            message="OpenRouter API key is required. Please configure your API key in Settings."
+        )
+    
+    try:
+        # Run the 3-stage council process with user's API key
+        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
+            request.content,
+            council_members=request.council_members,
+            chairman_model=request.chairman_model,
+            api_key=x_openrouter_key
+        )
 
-    # Return the complete response with metadata (no persistence)
-    return {
-        "stage1": stage1_results,
-        "stage2": stage2_results,
-        "stage3": stage3_result,
-        "metadata": metadata
-    }
+        # Return the complete response with metadata (no persistence)
+        return {
+            "stage1": stage1_results,
+            "stage2": stage2_results,
+            "stage3": stage3_result,
+            "metadata": metadata
+        }
+    except CouncilException:
+        raise
+    except Exception as e:
+        raise CouncilException(
+            code=ErrorCode.INTERNAL_ERROR,
+            message="Council processing failed. Please try again.",
+            details={"original_error": str(e)}
+        )
 
 
 @app.post("/api/conversations/{conversation_id}/message/stream")
@@ -132,6 +143,16 @@ async def send_message_stream(
     Note: This endpoint does NOT persist messages - Convex handles persistence.
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
+    # Validate API key upfront
+    if not x_openrouter_key:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error_code": ErrorCode.MISSING_API_KEY,
+                "message": "OpenRouter API key is required. Please configure your API key in Settings."
+            }
+        )
+    
     # Capture api_key for closure
     api_key = x_openrouter_key
 
@@ -143,11 +164,10 @@ async def send_message_stream(
         try:
             # Validate quorum
             if len(council_members) < 1:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Council requires at least 1 member.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Council requires at least 1 member.'})}\n\n"
                 return
 
             # Start title generation in parallel (don't await yet)
-            title_task = None
             title_task = asyncio.create_task(generate_conversation_title(request.content, api_key=api_key))
 
             # Stage 1: Collect responses
@@ -156,7 +176,7 @@ async def send_message_stream(
 
             # Check quorum after response
             if len(stage1_results) < 1:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Insufficient council quorum: 0 models responded.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.MODEL_UNAVAILABLE, 'message': 'No models responded. Please check your API key and try again.'})}\n\n"
                 return
 
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
@@ -187,8 +207,22 @@ async def send_message_stream(
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
         except Exception as e:
-            # Send error event
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            # Send error event with structured error code
+            error_code = ErrorCode.INTERNAL_ERROR
+            message = "Council processing failed. Please try again."
+            
+            error_str = str(e).lower()
+            if "api key" in error_str or "unauthorized" in error_str or "401" in error_str:
+                error_code = ErrorCode.INVALID_API_KEY
+                message = "Invalid API key. Please check your OpenRouter API key in Settings."
+            elif "rate limit" in error_str or "429" in error_str:
+                error_code = ErrorCode.RATE_LIMIT_EXCEEDED
+                message = "Rate limit exceeded. Please wait before trying again."
+            elif "timeout" in error_str:
+                error_code = ErrorCode.TIMEOUT
+                message = "Request timed out. Please try again."
+            
+            yield f"data: {json.dumps({'type': 'error', 'error_code': error_code, 'message': message})}\n\n"
 
     return StreamingResponse(
         event_generator(),

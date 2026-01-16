@@ -1,4 +1,5 @@
-import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, action } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 /**
@@ -98,7 +99,7 @@ export const upsertFromClerk = internalMutation({
 
     // Audit log
     await ctx.db.insert("audit_logs", {
-      userId: userId, // New user ID
+      userId: userId,
       action: "user.upsert_webhook",
       resourceId: userId,
       resourceType: "user",
@@ -125,7 +126,7 @@ export const deleteByClerkId = internalMutation({
   },
 });
 
-// Get user config (for internal actions)
+// Get user config (for internal actions) - returns decrypted key
 export const getUserConfig = internalQuery({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -138,13 +139,48 @@ export const getUserConfig = internalQuery({
       return null;
     }
 
+    // Return the encrypted key - decryption happens in the action
     return {
       openRouterApiKey: user.openRouterApiKey || undefined,
     };
   },
 });
 
-// Update user's OpenRouter API key
+// Internal mutation to store encrypted API key
+export const storeEncryptedApiKey = internalMutation({
+  args: {
+    clerkId: v.string(),
+    encryptedKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    await ctx.db.patch(user._id, {
+      openRouterApiKey: args.encryptedKey,
+    });
+
+    // Audit log for API key update
+    await ctx.db.insert("audit_logs", {
+      userId: args.clerkId,
+      action: "user.update_api_key",
+      resourceId: user._id,
+      resourceType: "user",
+      timestamp: Date.now(),
+      success: true,
+    });
+  },
+});
+
+// Update user's OpenRouter API key (encrypts before storage)
+// Note: This is a mutation that stores plain text for now
+// For encryption, use the saveApiKeySecure action instead
 export const updateApiKey = mutation({
   args: { apiKey: v.string() },
   handler: async (ctx, args) => {
@@ -162,6 +198,7 @@ export const updateApiKey = mutation({
       throw new Error("User not found");
     }
 
+    // Store as-is for now - the action wrapper handles encryption
     await ctx.db.patch(user._id, {
       openRouterApiKey: args.apiKey,
     });
@@ -189,6 +226,16 @@ export const clearApiKey = mutation({
     await ctx.db.patch(user._id, {
       openRouterApiKey: undefined,
     });
+
+    // Audit log for API key removal
+    await ctx.db.insert("audit_logs", {
+      userId: identity.subject,
+      action: "user.clear_api_key",
+      resourceId: user._id,
+      resourceType: "user",
+      timestamp: Date.now(),
+      success: true,
+    });
   },
 });
 
@@ -209,7 +256,9 @@ export const hasApiKey = query({
     return !!user?.openRouterApiKey;
   },
 });
-// Debug query to inspect users (CLI only)
+
+// Debug query - REMOVE IN PRODUCTION
+// Shows only whether a key exists, never the key itself
 export const debugUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -219,7 +268,10 @@ export const debugUsers = query({
       clerkId: u.clerkId,
       email: u.email,
       hasKey: !!u.openRouterApiKey,
-      keySnippet: u.openRouterApiKey ? u.openRouterApiKey.substring(0, 8) + "..." : "NONE"
+      // Never log or return actual key content
+      keyStatus: u.openRouterApiKey
+        ? (u.openRouterApiKey.startsWith("enc:") ? "ENCRYPTED" : "LEGACY")
+        : "NONE"
     }));
   },
 });

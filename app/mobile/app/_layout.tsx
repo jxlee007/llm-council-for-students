@@ -1,7 +1,12 @@
 import "../global.css";
 import { useEffect } from "react";
-import { View, ActivityIndicator, Text, SafeAreaView } from "react-native";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { View, ActivityIndicator, Text } from "react-native";
+import {
+  Stack,
+  useRouter,
+  useSegments,
+  useNavigationContainerRef,
+} from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
@@ -14,8 +19,17 @@ import OfflineBanner from "../components/OfflineBanner";
 import { tokenCache } from "../lib/tokenCache";
 import { useUIStore } from "../lib/store";
 import { api } from "../convex/_generated/api";
+import Config, { getConfigErrorMessage } from "../lib/config";
+import { initLogger, sentryWrap, navigationIntegration } from "../lib/logger";
 
-const convex = new ConvexReactClient(process.env.EXPO_PUBLIC_CONVEX_URL!);
+// Initialize Convex client (only if URL is valid)
+const convex = Config.convexUrl
+  ? new ConvexReactClient(Config.convexUrl)
+  : null;
+
+// Initialize Sentry immediately at module load
+// This must run before Sentry.wrap() which is called on default export
+initLogger();
 
 /**
  * AppNavigation handles authentication state and provides the navigation context.
@@ -30,7 +44,6 @@ function AppNavigation() {
   const segments = useSegments();
   const router = useRouter();
 
-  // ✅ CRITICAL: Remove useRouter() - use direct navigation instead
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
 
   useEffect(() => {
@@ -53,7 +66,6 @@ function AppNavigation() {
     }
   }, [isAuthenticated, getOrCreateUser]);
 
-  // ✅ SIMPLIFIED: No useRouter() - let Stack handle redirects naturally
   if (isLoading) {
     return (
       <View
@@ -94,21 +106,103 @@ function AppNavigation() {
   );
 }
 
-export default function RootLayout() {
+/**
+ * Configuration Error Screen
+ * Shown when critical environment variables are missing or invalid.
+ */
+function ConfigErrorScreen() {
+  const errorMessage = getConfigErrorMessage();
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#fef2f2",
+        padding: 32,
+      }}
+    >
+      <AlertTriangle size={64} color="#dc2626" />
+      <Text
+        style={{
+          fontSize: 20,
+          fontWeight: "bold",
+          color: "#991b1b",
+          marginTop: 24,
+          textAlign: "center",
+        }}
+      >
+        Configuration Error
+      </Text>
+      <Text
+        style={{
+          color: "#b91c1c",
+          marginTop: 16,
+          textAlign: "center",
+          lineHeight: 22,
+        }}
+      >
+        {errorMessage}
+      </Text>
+      {!Config.isProduction && Config.validationWarnings.length > 0 && (
+        <View style={{ marginTop: 24 }}>
+          <Text style={{ color: "#92400e", fontWeight: "600" }}>Warnings:</Text>
+          {Config.validationWarnings.map((warning, i) => (
+            <Text
+              key={i}
+              style={{ color: "#92400e", fontSize: 12, marginTop: 4 }}
+            >
+              • {warning}
+            </Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function RootLayout() {
   const loadSettings = useUIStore((state) => state.loadSettings);
-  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+  const navigationRef = useNavigationContainerRef();
 
   useEffect(() => {
     loadSettings();
-  }, []);
+  }, [loadSettings]);
 
-  if (!publishableKey) {
-    throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in .env");
+  // Register navigation container with Sentry for route tracking
+  useEffect(() => {
+    if (navigationRef) {
+      navigationIntegration.registerNavigationContainer(navigationRef);
+    }
+  }, [navigationRef]);
+
+  // Fail fast on configuration errors
+  if (Config.validationError) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <ConfigErrorScreen />
+      </SafeAreaProvider>
+    );
+  }
+
+  // Safety check for Convex client
+  if (!convex) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <ConfigErrorScreen />
+      </SafeAreaProvider>
+    );
   }
 
   return (
     <SafeAreaProvider>
-      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ClerkProvider
+        publishableKey={Config.clerkPublishableKey}
+        tokenCache={tokenCache}
+      >
         <ClerkLoaded>
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
             <ErrorBoundary>
@@ -121,3 +215,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
+export default sentryWrap(RootLayout);

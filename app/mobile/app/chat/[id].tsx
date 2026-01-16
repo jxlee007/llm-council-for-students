@@ -44,6 +44,11 @@ function ChatScreen() {
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canRetry, setCanRetry] = useState(false);
+  const [lastMessage, setLastMessage] = useState<{
+    content: string;
+    attachment?: ExtractedFile;
+  } | null>(null);
   const hasProcessedInitialMessage = useRef(false);
 
   // Derive processing state from messages
@@ -141,8 +146,18 @@ function ChatScreen() {
     } catch (err: any) {
       console.error("Failed to process message:", err);
       setError(err.message || "Council connection failed");
+      setCanRetry(true);
+      setLastMessage({ content, attachment });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (lastMessage) {
+      setError(null);
+      setCanRetry(false);
+      handleSendMessage(lastMessage.content, lastMessage.attachment);
     }
   };
 
@@ -181,7 +196,18 @@ function ChatScreen() {
     <View className="flex-1 bg-background">
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View className="flex-1">
-          {error && <Banner message={error} onDismiss={() => setError(null)} />}
+          {error && (
+            <Banner
+              message={error}
+              onDismiss={() => {
+                setError(null);
+                setCanRetry(false);
+              }}
+              action={
+                canRetry ? { label: "Retry", onPress: handleRetry } : undefined
+              }
+            />
+          )}
 
           <FlatList
             ref={flatListRef}

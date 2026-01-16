@@ -15,11 +15,12 @@ import {
   Info,
   LogOut,
   User,
+  ShieldCheck,
 } from "lucide-react-native";
 import { useUIStore } from "../../lib/store";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "../../convex/_generated/api";
 
 /**
@@ -38,7 +39,7 @@ export default function SettingsScreen() {
 
   // Use Convex as source of truth for API key status
   const hasApiKeyInDB = useQuery(api.users.hasApiKey);
-  const updateApiKeyInDB = useMutation(api.users.updateApiKey);
+  const saveApiKeySecure = useAction(api.userActions.saveApiKeySecure);
   const clearApiKeyInDB = useMutation(api.users.clearApiKey);
 
   const handleSaveApiKey = async () => {
@@ -49,12 +50,15 @@ export default function SettingsScreen() {
 
     setIsSaving(true);
     try {
-      // Save to Convex database (source of truth)
-      await updateApiKeyInDB({ apiKey: apiKey.trim() });
-      // Also save to local storage as cache
+      // Save to Convex database with encryption (source of truth)
+      await saveApiKeySecure({ apiKey: apiKey.trim() });
+      // Also save to local storage as cache (for offline availability)
       await saveApiKey(apiKey.trim());
       setApiKey("");
-      Alert.alert("Success", "API key saved securely!");
+      Alert.alert(
+        "API Key Saved",
+        "Your API key has been encrypted and stored securely."
+      );
     } catch (error) {
       console.error("Failed to save API key:", error);
       Alert.alert("Error", "Failed to save API key. Please try again.");

@@ -3,12 +3,21 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 export default ({ config }: ConfigContext): ExpoConfig => {
   const isDev = process.env.EXPO_PUBLIC_APP_VARIANT === 'development';
   const isPreview = process.env.EXPO_PUBLIC_APP_VARIANT === 'preview';
+  const isProd = process.env.EXPO_PUBLIC_APP_VARIANT === 'production';
+
+  // App naming based on environment
+  const appName = isDev
+    ? "LLM Council (Dev)"
+    : (isPreview ? "LLM Council (Preview)" : "LLM Council");
 
   return {
     ...config,
-    name: isDev ? "LLM Council (Dev)" : (isPreview ? "LLM Council (Prev)" : "LLM Council - For students"),
+    name: appName,
     slug: "llm-council-consensus",
     version: "1.0.0",
+    runtimeVersion: {
+      policy: "appVersion"
+    },
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -21,7 +30,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     ios: {
       supportsTablet: true,
-      bundleIdentifier: isDev ? "com.llmcouncil.app.dev" : (isPreview ? "com.llmcouncil.app.preview" : "com.llmcouncil.app")
+      bundleIdentifier: isDev
+        ? "com.llmcouncil.app.dev"
+        : (isPreview ? "com.llmcouncil.app.preview" : "com.llmcouncil.app"),
+      infoPlist: {
+        NSCameraUsageDescription: "Used for attaching photos to messages",
+        NSPhotoLibraryUsageDescription: "Used for attaching files to messages",
+      }
     },
     android: {
       adaptiveIcon: {
@@ -29,7 +44,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: "#4f46e5"
       },
       edgeToEdgeEnabled: true,
-      package: isDev ? "com.llmcouncil.app.dev" : (isPreview ? "com.llmcouncil.app.preview" : "com.llmcouncil.app")
+      package: isDev
+        ? "com.llmcouncil.app.dev"
+        : (isPreview ? "com.llmcouncil.app.preview" : "com.llmcouncil.app"),
+      permissions: [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ]
     },
     web: {
       favicon: "./assets/favicon.png",
@@ -38,17 +59,31 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     plugins: [
       "expo-router",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      // Sentry Configuration
+      [
+        "@sentry/react-native/expo",
+        {
+          organization: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true
     },
+    updates: {
+      url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || "your-project-id"}`,
+      enabled: isProd || isPreview,
+      fallbackToCacheTimeout: 0
+    },
     extra: {
       eas: {
-        projectId: "your-project-id" // Placeholder, EAS CLI will update this if needed
+        projectId: process.env.EAS_PROJECT_ID || "your-project-id"
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       clerkKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     }
   };
 };

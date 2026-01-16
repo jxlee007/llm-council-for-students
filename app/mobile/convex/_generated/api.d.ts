@@ -13,10 +13,12 @@ import type * as attachments from "../attachments.js";
 import type * as conversations from "../conversations.js";
 import type * as council from "../council.js";
 import type * as councilMutations from "../councilMutations.js";
+import type * as encryption from "../encryption.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
 import type * as openrouter from "../openrouter.js";
 import type * as rateLimits from "../rateLimits.js";
+import type * as userActions from "../userActions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -31,10 +33,12 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   council: typeof council;
   councilMutations: typeof councilMutations;
+  encryption: typeof encryption;
   http: typeof http;
   messages: typeof messages;
   openrouter: typeof openrouter;
   rateLimits: typeof rateLimits;
+  userActions: typeof userActions;
   users: typeof users;
 }>;
 

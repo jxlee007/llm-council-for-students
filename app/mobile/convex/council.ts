@@ -3,8 +3,11 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { decryptApiKey } from "./encryption";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001";
+const API_BASE_URL = process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001";
+const CONNECTION_TIMEOUT_MS = 30000; // 30s to establish connection
+const STREAM_TIMEOUT_MS = 180000; // 3 minutes max for full stream
 
 /**
  * Stage 1 response type from FastAPI
@@ -98,17 +101,26 @@ export const runCouncil = action({
         const userConfig = await ctx.runQuery(internal.users.getUserConfig, {
             userId: identity.subject,
         });
-        const apiKey = userConfig?.openRouterApiKey;
-        console.log(`[Council] API Key found for user ${identity.subject}: ${apiKey ? "YES (starts with " + apiKey.substring(0, 8) + "...)" : "NO"}`);
+
+        // Decrypt the API key if present
+        let apiKey: string | null = null;
+        if (userConfig?.openRouterApiKey) {
+            try {
+                apiKey = decryptApiKey(userConfig.openRouterApiKey);
+            } catch (error) {
+                console.error("[Council] Failed to decrypt API key");
+            }
+        }
+        // Log only presence, never the key content
+        console.log(`[Council] API Key status: ${apiKey ? "CONFIGURED" : "NOT_CONFIGURED"}`);
 
         const headers: Record<string, string> = {
             "Content-Type": "application/json",
         };
         if (apiKey) {
             headers["X-OpenRouter-Key"] = apiKey;
-            console.log("[Council] Added X-OpenRouter-Key header");
         } else {
-            console.log("[Council] WARNING: No API Key found, backend will likely fail");
+            console.warn("[Council] No API Key configured, backend may require one");
         }
 
         const body: Record<string, unknown> = { content: args.content };
@@ -120,15 +132,21 @@ export const runCouncil = action({
         }
 
         try {
-            // 3. Call FastAPI streaming endpoint
+            // 3. Call FastAPI streaming endpoint with connection timeout
+            const controller = new AbortController();
+            const connectionTimeout = setTimeout(() => controller.abort(), CONNECTION_TIMEOUT_MS);
+
             const response = await fetch(
                 `${API_BASE_URL}/api/conversations/${args.conversationId}/message/stream`,
                 {
                     method: "POST",
                     headers,
                     body: JSON.stringify(body),
+                    signal: controller.signal,
                 }
             );
+
+            clearTimeout(connectionTimeout);
 
             if (!response.ok) {
                 const text = await response.text();

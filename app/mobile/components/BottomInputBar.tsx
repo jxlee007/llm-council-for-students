@@ -9,9 +9,10 @@ import {
   Keyboard,
   Platform,
 } from "react-native";
-import { Plus, Search, Send } from "lucide-react-native";
+import { Plus, Search, Send, WifiOff } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import * as Network from "expo-network";
 import { pickAndExtractText, ExtractedFile } from "../lib/files";
 import { FileChip } from "./FileChip";
 
@@ -36,9 +37,26 @@ export default function BottomInputBar({
   const router = useRouter();
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<ExtractedFile | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
 
   // Animated value for keyboard offset
   const keyboardOffset = useRef(new Animated.Value(0)).current;
+
+  // Check network connectivity
+  useEffect(() => {
+    const checkNetwork = async () => {
+      try {
+        const status = await Network.getNetworkStateAsync();
+        setIsOnline(status.isConnected ?? true);
+      } catch {
+        // Assume online if check fails
+        setIsOnline(true);
+      }
+    };
+    checkNetwork();
+    const interval = setInterval(checkNetwork, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Use keyboardWillShow/Hide on iOS, keyboardDidShow/Hide on Android
@@ -71,12 +89,15 @@ export default function BottomInputBar({
 
   const handleSend = () => {
     const trimmed = message.trim();
-    if ((trimmed || attachment) && !disabled) {
+    if ((trimmed || attachment) && !disabled && isOnline) {
       onSend(trimmed, attachment || undefined);
       setMessage("");
       setAttachment(null);
     }
   };
+
+  // Compute effective disabled state
+  const effectivelyDisabled = disabled || !isOnline;
 
   const handleFilePick = async () => {
     const file = await pickAndExtractText();
@@ -114,12 +135,14 @@ export default function BottomInputBar({
           {/* Text Input */}
           <TextInput
             className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
-            placeholder="Ask anything..."
-            placeholderTextColor="#6b7280"
+            placeholder={
+              isOnline ? "Ask anything..." : "Offline - Connect to send"
+            }
+            placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
             value={message}
             onChangeText={setMessage}
             multiline
-            editable={!disabled}
+            editable={!effectivelyDisabled}
           />
 
           {/* Action Row */}
@@ -129,13 +152,13 @@ export default function BottomInputBar({
               <TouchableOpacity
                 onPress={handleFilePick}
                 className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-                disabled={disabled}
+                disabled={effectivelyDisabled}
               >
                 <Plus size={18} color="#9ca3af" />
               </TouchableOpacity>
               <TouchableOpacity
                 className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-                disabled={disabled}
+                disabled={effectivelyDisabled}
               >
                 <Search size={18} color="#9ca3af" />
               </TouchableOpacity>
@@ -144,15 +167,17 @@ export default function BottomInputBar({
             {/* Send Button */}
             <TouchableOpacity
               onPress={handleSend}
-              disabled={(!message.trim() && !attachment) || disabled}
+              disabled={(!message.trim() && !attachment) || effectivelyDisabled}
               className={`w-12 h-12 items-center justify-center rounded-full ${
-                (message.trim() || attachment) && !disabled
+                (message.trim() || attachment) && !effectivelyDisabled
                   ? "bg-primary"
                   : "bg-muted"
               }`}
             >
               {disabled ? (
                 <ActivityIndicator size="small" color="#0f1419" />
+              ) : !isOnline ? (
+                <WifiOff size={20} color="#ef4444" />
               ) : (
                 <Send size={20} color="#0f1419" />
               )}
