@@ -18,6 +18,9 @@ export const Config = {
   isPreview: process.env.EXPO_PUBLIC_APP_VARIANT === "preview",
   isDevelopment: process.env.EXPO_PUBLIC_APP_VARIANT !== "production" && process.env.EXPO_PUBLIC_APP_VARIANT !== "preview",
 
+  // Sentry is enabled only in staging/production, never local development
+  sentryEnabled: process.env.EXPO_PUBLIC_APP_VARIANT === "production" || process.env.EXPO_PUBLIC_APP_VARIANT === "preview",
+
   // Validation state
   validationError: null as string | null,
   validationWarnings: [] as string[],
