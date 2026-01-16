@@ -98,17 +98,11 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
 
       {/* Response content - Fixed height ScrollView */}
       <View
-        className="bg-secondary/30 rounded-2xl p-4 border border-border"
+        className="rounded-xl overflow-hidden"
         collapsable={false}
         style={{
           height: contentHeight,
           flexShrink: 0,
-          // Inline shadow to avoid NativeWind CSS Interop race condition
-          elevation: 2,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.18,
-          shadowRadius: 1.0,
         }}
       >
         <ScrollView
