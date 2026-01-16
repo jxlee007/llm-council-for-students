@@ -7,17 +7,12 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useUIStore } from "../../lib/store";
-import { sendMessage } from "../../lib/api";
-import type {
-  Message,
-  AssistantMessage,
-  AggregateRanking,
-} from "../../lib/types";
+import type { Message, AggregateRanking } from "../../lib/types";
 import { ExtractedFile } from "../../lib/files";
 import BottomInputBar from "../../components/BottomInputBar";
 import MessageBubble from "../../components/MessageBubble";
@@ -27,166 +22,138 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 /**
- * Chat screen using unified BottomInputBar with animated keyboard handling.
+ * Chat screen using Convex runCouncil action for council processing.
+ * Animations are driven by message.stage fields from backend data.
  */
 function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, initialMessage } = useLocalSearchParams<{
+    id: string;
+    initialMessage?: string;
+  }>();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
 
   const conversationId = id as Id<"conversations">;
   const conversation = useQuery(api.conversations.get, { id: conversationId });
   const messages = useQuery(api.messages.list, { conversationId });
-  const sendUserMessage = useMutation(api.messages.send);
-  const addAssistantResponse = useMutation(api.messages.addAssistantResponse);
-  const updateTitleInDB = useMutation(api.conversations.updateTitle);
+  const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
   const { councilModels, chairmanModel } = useUIStore();
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStage, setCurrentStage] = useState<0 | 1 | 2 | 3>(0);
-  const [aggregateRankings, setAggregateRankings] = useState<
-    AggregateRanking[]
-  >([]);
-  const [pendingResponse, setPendingResponse] =
-    useState<Partial<AssistantMessage> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const hasProcessedInitialMessage = useRef(false);
 
+  // Derive processing state from messages
+  const processingMessage = messages?.find(
+    (m: Message & { processing?: boolean }) =>
+      m.role === "assistant" && m.processing === true
+  );
+  const isProcessing = !!processingMessage;
+
+  // Derive current stage from the processing message
+  const getCurrentStage = (): 0 | 1 | 2 | 3 => {
+    if (!processingMessage) return 0;
+    const msg = processingMessage as any;
+    if (msg.stage3) return 3;
+    if (msg.stage2?.length > 0) return 2;
+    if (msg.stage1?.length > 0) return 1;
+    return 1; // Default to stage 1 while processing
+  };
+  const currentStage = getCurrentStage();
+
+  // Scroll to bottom when messages update
   useEffect(() => {
-    if (flatListRef.current && (messages?.length || pendingResponse)) {
+    if (flatListRef.current && messages?.length) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages?.length, pendingResponse]);
+  }, [messages?.length, processingMessage?.stage1, processingMessage?.stage2]);
+
+  // Process initial message from Home screen on mount
+  useEffect(() => {
+    if (
+      initialMessage &&
+      conversation &&
+      messages !== undefined &&
+      messages.length === 0 &&
+      !hasProcessedInitialMessage.current
+    ) {
+      hasProcessedInitialMessage.current = true;
+      const decodedMessage = decodeURIComponent(initialMessage);
+      handleSendMessage(decodedMessage);
+
+      // Clear the query param to avoid re-processing
+      router.setParams({ initialMessage: undefined });
+    }
+  }, [initialMessage, conversation, messages]);
 
   const handleSendMessage = async (
     content: string,
     attachment?: ExtractedFile
   ) => {
-    if (!id || !conversation) return;
+    if (!id || !conversation || isSubmitting || isProcessing) return;
 
-    let attachmentId: Id<"attachments"> | undefined;
+    let attachmentIds: Id<"attachments">[] | undefined;
 
     if (attachment) {
       try {
-        attachmentId = await createAttachment({
+        setIsSubmitting(true);
+        const attachmentId = await createAttachment({
           conversationId,
           fileName: attachment.name,
           fileType: attachment.type,
           extractedText: attachment.text,
         });
+        attachmentIds = [attachmentId];
       } catch (err) {
         console.error("Failed to save attachment:", err);
         setError("Failed to upload file attachment.");
+        setIsSubmitting(false);
         return;
       }
     }
 
-    try {
-      await sendUserMessage({
-        conversationId,
-        content:
-          content || (attachment ? `[Attached File: ${attachment.name}]` : ""),
-        attachmentIds: attachmentId ? [attachmentId] : undefined,
-      });
-    } catch (err) {
-      console.error("Failed to save user message:", err);
-      setError("Failed to save message to cloud.");
-      return;
+    setError(null);
+    setIsSubmitting(true);
+
+    let prompt = content;
+    if (attachment) {
+      prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
     }
 
-    setIsProcessing(true);
-    setCurrentStage(1);
-    setPendingResponse({
-      role: "assistant",
-      stage1: [],
-      stage2: [],
-      stage3: { model: "", response: "" },
-    });
-    setAggregateRankings([]);
-    setError(null);
-
     try {
-      const { loadApiKey } = useUIStore.getState();
-      const apiKey = await loadApiKey();
-
-      let prompt = content;
-      if (attachment) {
-        prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
-      }
-
-      const response = await sendMessage(
-        id,
-        prompt,
-        apiKey,
-        councilModels.length > 0 ? councilModels : undefined,
-        chairmanModel
-      );
-
-      setCurrentStage(3);
-      setPendingResponse({
-        role: "assistant",
-        stage1: response.stage1,
-        stage2: response.stage2,
-        stage3: response.stage3,
-      });
-
-      await addAssistantResponse({
+      const result = await runCouncil({
         conversationId,
-        content: response.stage3.response,
-        stage1: response.stage1,
-        stage2: response.stage2,
-        stage3: response.stage3,
+        content:
+          prompt || (attachment ? `[Attached File: ${attachment.name}]` : ""),
+        attachmentIds,
+        councilMembers: councilModels.length > 0 ? councilModels : undefined,
+        chairmanModel: chairmanModel || undefined,
       });
 
-      if (response.metadata?.aggregate_rankings) {
-        setAggregateRankings(response.metadata.aggregate_rankings);
+      if (!result.success) {
+        setError(result.error || "Council processing failed");
       }
-
-      if (
-        (response.metadata as any)?.title &&
-        conversation.title === "New Chat"
-      ) {
-        await updateTitleInDB({
-          id: conversationId,
-          title: (response.metadata as any).title,
-        });
-      }
-
-      setPendingResponse(null);
     } catch (err: any) {
       console.error("Failed to process message:", err);
       setError(err.message || "Council connection failed");
-      setPendingResponse(null);
     } finally {
-      setIsProcessing(false);
-      setCurrentStage(0);
+      setIsSubmitting(false);
     }
   };
 
   const renderMessage = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
       <FadeInView delay={index > 0 ? 0 : 300}>
-        <MessageBubble
-          message={item}
-          aggregateRankings={
-            (item as any) === pendingResponse ? aggregateRankings : undefined
-          }
-        />
+        <MessageBubble message={item} />
       </FadeInView>
     ),
-    [pendingResponse, aggregateRankings]
+    []
   );
-
-  const getDisplayMessages = (): Message[] => {
-    const displayMessages = [...(messages || [])] as any[];
-    if (pendingResponse && isProcessing) {
-      displayMessages.push(pendingResponse as AssistantMessage);
-    }
-    return displayMessages;
-  };
 
   if (conversation === undefined || messages === undefined) {
     return (
@@ -218,10 +185,8 @@ function ChatScreen() {
 
           <FlatList
             ref={flatListRef}
-            data={getDisplayMessages()}
-            keyExtractor={(item, index) =>
-              (item as any)._id || index.toString()
-            }
+            data={messages as Message[]}
+            keyExtractor={(item) => (item as any)._id}
             renderItem={renderMessage}
             contentContainerStyle={{
               padding: 16,
@@ -266,7 +231,10 @@ function ChatScreen() {
       </TouchableWithoutFeedback>
 
       {/* Unified Input Bar with animated keyboard handling */}
-      <BottomInputBar onSend={handleSendMessage} disabled={isProcessing} />
+      <BottomInputBar
+        onSend={handleSendMessage}
+        disabled={isProcessing || isSubmitting}
+      />
     </View>
   );
 }

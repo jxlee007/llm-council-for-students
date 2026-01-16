@@ -20,6 +20,7 @@ export default defineSchema({
     name: v.optional(v.string()),
     isPro: v.boolean(),
     subscriptionTier: v.optional(v.string()),
+    openRouterApiKey: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_clerkId", ["clerkId"]),
 
@@ -63,6 +64,8 @@ export default defineSchema({
         response: v.string(),
       })
     ),
+    processing: v.optional(v.boolean()),
+    error: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_conversation", ["conversationId"]),
 
@@ -99,4 +102,12 @@ export default defineSchema({
     success: v.boolean(),
     error: v.optional(v.string()),
   }).index("by_user", ["userId"]),
+
+  // Rate limits for actions
+  rateLimits: defineTable({
+    identifier: v.string(),
+    key: v.string(),
+    hits: v.number(),
+    resetTime: v.number(),
+  }).index("by_identifier_key", ["identifier", "key"]),
 });

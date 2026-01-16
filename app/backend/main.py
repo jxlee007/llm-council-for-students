@@ -99,27 +99,9 @@ async def send_message(
     Send a message and run the 3-stage council process.
     Returns the complete response with all stages.
     
+    Note: This endpoint does NOT persist messages - Convex handles persistence.
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
-    # Check if conversation exists, auto-create if not
-    # This handles the case where conversation was created in Convex but not in Python storage
-    conversation = storage.get_conversation(conversation_id)
-    if conversation is None:
-        # Auto-create the conversation for new Convex IDs
-        print(f"[Auto-create] Conversation {conversation_id} not found, creating...")
-        conversation = storage.create_conversation(conversation_id)
-
-    # Check if this is the first message
-    is_first_message = len(conversation["messages"]) == 0
-
-    # Add user message
-    storage.add_user_message(conversation_id, request.content)
-
-    # If this is the first message, generate a title
-    if is_first_message:
-        title = await generate_conversation_title(request.content, api_key=x_openrouter_key)
-        storage.update_conversation_title(conversation_id, title)
-
     # Run the 3-stage council process with user's API key
     stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
         request.content,
@@ -128,15 +110,7 @@ async def send_message(
         api_key=x_openrouter_key
     )
 
-    # Add assistant message with all stages
-    storage.add_assistant_message(
-        conversation_id,
-        stage1_results,
-        stage2_results,
-        stage3_result
-    )
-
-    # Return the complete response with metadata
+    # Return the complete response with metadata (no persistence)
     return {
         "stage1": stage1_results,
         "stage2": stage2_results,
@@ -155,49 +129,34 @@ async def send_message_stream(
     Send a message and stream the 3-stage council process.
     Returns Server-Sent Events as each stage completes.
     
+    Note: This endpoint does NOT persist messages - Convex handles persistence.
     Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
     """
-    # Check if conversation exists, auto-create if not
-    # This handles the case where conversation was created in Convex but not in Python storage
-    conversation = storage.get_conversation(conversation_id)
-    if conversation is None:
-        # Auto-create the conversation for new Convex IDs
-        print(f"[Auto-create] Conversation {conversation_id} not found, creating...")
-        conversation = storage.create_conversation(conversation_id)
-
-    # Check if this is the first message
-    is_first_message = len(conversation["messages"]) == 0
-    
     # Capture api_key for closure
     api_key = x_openrouter_key
 
-    # Use provided members or fallback to default in lower layers (run_full_council handles None, but individual stages don't)
-    # So we need to resolve it here for individual stage calls
+    # Use provided members or fallback to default
     from .config import COUNCIL_MODELS
     council_members = request.council_members or COUNCIL_MODELS
 
     async def event_generator():
         try:
             # Validate quorum
-            if len(council_members) < 2:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Council requires at least 2 members.'})}\n\n"
+            if len(council_members) < 1:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Council requires at least 1 member.'})}\n\n"
                 return
-
-            # Add user message
-            storage.add_user_message(conversation_id, request.content)
 
             # Start title generation in parallel (don't await yet)
             title_task = None
-            if is_first_message:
-                title_task = asyncio.create_task(generate_conversation_title(request.content, api_key=api_key))
+            title_task = asyncio.create_task(generate_conversation_title(request.content, api_key=api_key))
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
             stage1_results = await stage1_collect_responses(request.content, council_members, api_key=api_key)
 
             # Check quorum after response
-            if len(stage1_results) < 2:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Insufficient council quorum: fewer than 2 models responded.'})}\n\n"
+            if len(stage1_results) < 1:
+                yield f"data: {json.dumps({'type': 'error', 'message': 'Insufficient council quorum: 0 models responded.'})}\n\n"
                 return
 
             yield f"data: {json.dumps({'type': 'stage1_complete', 'data': stage1_results})}\n\n"
@@ -219,21 +178,12 @@ async def send_message_stream(
             )
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
-            # Wait for title generation if it was started
+            # Wait for title generation and emit event (Convex handles persistence)
             if title_task:
                 title = await title_task
-                storage.update_conversation_title(conversation_id, title)
                 yield f"data: {json.dumps({'type': 'title_complete', 'data': {'title': title}})}\n\n"
 
-            # Save complete assistant message
-            storage.add_assistant_message(
-                conversation_id,
-                stage1_results,
-                stage2_results,
-                stage3_result
-            )
-
-            # Send completion event
+            # Send completion event (no persistence - Convex handles it)
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"
 
         except Exception as e:

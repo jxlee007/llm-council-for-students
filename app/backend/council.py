@@ -334,18 +334,17 @@ async def run_full_council(
     members = council_members or COUNCIL_MODELS
 
     # Validate minimum members
-    if len(members) < 2:
-        raise ValueError("Council requires at least 2 members.")
+    if len(members) < 1:
+        raise ValueError("Council requires at least 1 member.")
 
     # Stage 1: Collect individual responses
     stage1_results = await stage1_collect_responses(user_query, members, api_key=api_key)
 
     # If no models responded successfully, return error
-    # We require at least 2 successful responses for a valid council
-    if len(stage1_results) < 2:
+    if len(stage1_results) < 1:
         return stage1_results, [], {
             "model": "error",
-            "response": "Insufficient council quorum: fewer than 2 models responded successfully."
+            "response": "Insufficient council quorum: 0 models responded successfully."
         }, {}
 
     # Stage 2: Collect rankings

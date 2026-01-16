@@ -31,7 +31,10 @@ export default function HomeScreen() {
       const conversationId = await createConversation({
         title: "New Chat",
       });
-      router.push(`/chat/${conversationId}`);
+      // Pass initial message to Chat screen via query params
+      router.push(
+        `/chat/${conversationId}?initialMessage=${encodeURIComponent(message)}`
+      );
     } catch (error) {
       console.error("Failed to create conversation:", error);
     } finally {
