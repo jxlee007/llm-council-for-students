@@ -1,31 +1,54 @@
 #!/bin/bash
 
-# LLM Council - Start script
-
-echo "Starting LLM Council..."
+echo "🚀 Starting LLM Council Mobile Dev Environment"
 echo ""
 
-# Start backend
-echo "Starting backend on http://localhost:8001..."
-uv run python -m backend.main &
-BACKEND_PID=$!
+# Root directory (adjust if needed)
+ROOT_DIR="$(pwd)"
 
-# Wait a bit for backend to start
+# -----------------------------
+# Backend
+# -----------------------------
+gnome-terminal \
+  --title="LLM Council - Backend" \
+  -- bash -c "
+    echo 'Starting Backend (FastAPI)...';
+    cd \"$ROOT_DIR\";
+    uv run python -m backend.main;
+    exec bash
+  "
+
 sleep 2
 
-# Start frontend
-echo "Starting frontend on http://localhost:5173..."
-cd frontend
-npm run dev &
-FRONTEND_PID=$!
+# -----------------------------
+# ngrok
+# -----------------------------
+gnome-terminal \
+  --title="LLM Council - ngrok" \
+  -- bash -c "
+    echo 'Starting ngrok tunnel for backend...';
+    ngrok http 8001;
+    exec bash
+  "
+
+sleep 2
+
+# -----------------------------
+# Expo (Mobile App)
+# -----------------------------
+gnome-terminal \
+  --title="LLM Council - Expo" \
+  -- bash -c "
+    echo 'Starting Expo (Mobile App)...';
+    cd \"$ROOT_DIR/app\";
+    expo start;
+    exec bash
+  "
 
 echo ""
-echo "✓ LLM Council is running!"
-echo "  Backend:  http://localhost:8001"
-echo "  Frontend: http://localhost:5173"
+echo "✅ Dev environment started:"
+echo "   • Backend  → http://localhost:8001"
+echo "   • ngrok    → check ngrok terminal for HTTPS URL"
+echo "   • Expo     → scan QR or run emulator"
 echo ""
-echo "Press Ctrl+C to stop both servers"
-
-# Wait for Ctrl+C
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" SIGINT SIGTERM
-wait
+echo "ℹ️  Close individual terminals to stop services"
