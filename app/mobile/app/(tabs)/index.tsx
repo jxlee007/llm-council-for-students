@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { useAuth } from "@clerk/clerk-expo";
 import { useUIStore } from "../../lib/store";
 import BottomInputBar from "../../components/BottomInputBar";
+import PresetsModal from "../../components/PresetsModal";
 
 /**
  * Home screen - Clean prompt entry point.
@@ -17,6 +18,7 @@ export default function HomeScreen() {
   const createConversation = useMutation(api.conversations.create);
   const { councilModels } = useUIStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
 
   const handleSubmit = async (message: string) => {
     if (!message.trim() || isSubmitting) return;
@@ -57,12 +59,19 @@ export default function HomeScreen() {
           </Text>
         </View>
 
+        {/* Quick Presets Modal */}
+        <PresetsModal
+          visible={showPresets}
+          onClose={() => setShowPresets(false)}
+        />
+
         {/* Unified Input Bar with animated keyboard handling */}
         <BottomInputBar
           onSend={handleSubmit}
           disabled={isSubmitting}
           showCouncilBadge
           councilModelsCount={councilModels.length}
+          onSearchPress={() => setShowPresets(true)}
         />
       </View>
     </TouchableWithoutFeedback>

@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { PRESETS } from './presets';
 
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 const COUNCIL_MODELS_KEY = '@llm_council_models';
@@ -41,84 +42,111 @@ const secureStorage = {
 };
 
 interface UIState {
-    // Settings (persisted locally)
-    hasApiKey: boolean;
-    councilModels: string[];
-    chairmanModel: string | null;
+  // Settings (persisted locally)
+  hasApiKey: boolean;
+  councilModels: string[];
+  chairmanModel: string | null;
+  activePresetId: string | null;
 
-    // Actions
-    loadSettings: () => Promise<void>;
-    setCouncilModels: (models: string[]) => void;
-    setChairmanModel: (model: string | null) => void;
+  // Actions
+  loadSettings: () => Promise<void>;
+  setCouncilModels: (models: string[], presetId?: string) => void;
+  setChairmanModel: (model: string | null, presetId?: string) => void;
+  setActivePresetId: (id: string | null) => void;
 
-    // API Key management
-    saveApiKey: (key: string) => Promise<void>;
-    loadApiKey: () => Promise<string | null>;
-    clearApiKey: () => Promise<void>;
-    checkApiKeyExists: () => Promise<void>;
+  // API Key management
+  saveApiKey: (key: string) => Promise<void>;
+  loadApiKey: () => Promise<string | null>;
+  clearApiKey: () => Promise<void>;
+  checkApiKeyExists: () => Promise<void>;
 }
+
+const findMatchingPreset = (councilModels: string[], chairmanModel: string | null): string | null => {
+  const match = Object.entries(PRESETS).find(([key, preset]) => {
+    const membersMatch =
+      preset.members.length === councilModels.length &&
+      preset.members.every((m) => councilModels.includes(m));
+    const chairmanMatch = preset.chairman === chairmanModel;
+    return membersMatch && chairmanMatch;
+  });
+  return match ? match[0] : null;
+};
 
 export const useUIStore = create<UIState>((set, get) => ({
 
-    // Initial state
-    hasApiKey: false,
-    councilModels: [],
-    chairmanModel: null,
+  // Initial state
+  hasApiKey: false,
+  councilModels: [],
+  chairmanModel: null,
+  activePresetId: null,
 
-    // Load local settings
-    loadSettings: async () => {
-        try {
-            // Load council config
-            const councilData = await AsyncStorage.getItem(COUNCIL_MODELS_KEY);
-            if (councilData) {
-                set({ councilModels: JSON.parse(councilData) });
-            }
+  // Load local settings
+  loadSettings: async () => {
+    try {
+      // Load council config
+      const councilData = await AsyncStorage.getItem(COUNCIL_MODELS_KEY);
+      let loadedCouncil: string[] = [];
+      if (councilData) {
+        loadedCouncil = JSON.parse(councilData);
+      }
 
-            const chairmanData = await AsyncStorage.getItem(CHAIRMAN_MODEL_KEY);
-            if (chairmanData) {
-                set({ chairmanModel: chairmanData });
-            }
+      const chairmanData = await AsyncStorage.getItem(CHAIRMAN_MODEL_KEY);
+      const loadedChairman = chairmanData || null;
 
-            // Check API key
-            const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
-            set({ hasApiKey: !!key });
+      set({
+        councilModels: loadedCouncil,
+        chairmanModel: loadedChairman,
+        activePresetId: findMatchingPreset(loadedCouncil, loadedChairman)
+      });
 
-        } catch (error) {
-            console.error('Failed to load settings:', error);
-        }
-    },
+      // Check API key
+      const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
+      set({ hasApiKey: !!key });
 
-    setCouncilModels: (models) => {
-        set({ councilModels: models });
-        AsyncStorage.setItem(COUNCIL_MODELS_KEY, JSON.stringify(models));
-    },
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  },
 
-    setChairmanModel: (model) => {
-        set({ chairmanModel: model });
-        if (model) {
-            AsyncStorage.setItem(CHAIRMAN_MODEL_KEY, model);
-        } else {
-            AsyncStorage.removeItem(CHAIRMAN_MODEL_KEY);
-        }
-    },
+  setCouncilModels: (models, presetId) => {
+    const { chairmanModel } = get();
+    const detectedPreset = presetId || findMatchingPreset(models, chairmanModel);
+    set({ councilModels: models, activePresetId: detectedPreset });
+    AsyncStorage.setItem(COUNCIL_MODELS_KEY, JSON.stringify(models));
+  },
 
-    // API Key management
-    saveApiKey: async (key: string) => {
-        await secureStorage.setItem(API_KEY_SECURE_KEY, key);
-        set({ hasApiKey: true });
-    },
+  setChairmanModel: (model, presetId) => {
+    const { councilModels } = get();
+    const detectedPreset = presetId || findMatchingPreset(councilModels, model);
+    set({ chairmanModel: model, activePresetId: detectedPreset });
+    if (model) {
+      AsyncStorage.setItem(CHAIRMAN_MODEL_KEY, model);
+    } else {
+      AsyncStorage.removeItem(CHAIRMAN_MODEL_KEY);
+    }
+  },
 
-    loadApiKey: async () => {
-        return await secureStorage.getItem(API_KEY_SECURE_KEY);
-    },
+  setActivePresetId: (id) => {
+    set({ activePresetId: id });
+  },
 
-    clearApiKey: async () => {
-        await secureStorage.deleteItem(API_KEY_SECURE_KEY);
-        set({ hasApiKey: false });
-    },
+  // API Key management
+  saveApiKey: async (key: string) => {
+    await secureStorage.setItem(API_KEY_SECURE_KEY, key);
+    set({ hasApiKey: true });
+  },
 
-    checkApiKeyExists: async () => {
-        const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
-        set({ hasApiKey: !!key });
-    },
+  loadApiKey: async () => {
+    return await secureStorage.getItem(API_KEY_SECURE_KEY);
+  },
+
+  clearApiKey: async () => {
+    await secureStorage.deleteItem(API_KEY_SECURE_KEY);
+    set({ hasApiKey: false });
+  },
+
+  checkApiKeyExists: async () => {
+    const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
+    set({ hasApiKey: !!key });
+  },
 }));

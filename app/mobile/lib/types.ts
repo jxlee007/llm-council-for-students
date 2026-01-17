@@ -7,11 +7,19 @@
 export interface Model {
     id: string;
     name: string;
+    description?: string;
     context_length: number;
     pricing: {
         prompt: string;
         completion: string;
     };
+    provider?: string;
+    capabilities?: {
+        image: boolean;
+        video: boolean;
+    };
+    ui_pills?: string[];
+    rankings?: string[];
 }
 
 /** Stage 1: Individual model response */

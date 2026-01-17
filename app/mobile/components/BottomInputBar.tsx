@@ -21,6 +21,7 @@ interface BottomInputBarProps {
   disabled?: boolean;
   showCouncilBadge?: boolean;
   councilModelsCount?: number;
+  onSearchPress?: () => void;
 }
 
 /**
@@ -32,6 +33,7 @@ export default function BottomInputBar({
   disabled = false,
   showCouncilBadge = false,
   councilModelsCount = 0,
+  onSearchPress,
 }: BottomInputBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -157,6 +159,7 @@ export default function BottomInputBar({
                 <Plus size={18} color="#9ca3af" />
               </TouchableOpacity>
               <TouchableOpacity
+                onPress={onSearchPress}
                 className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
                 disabled={effectivelyDisabled}
               >
