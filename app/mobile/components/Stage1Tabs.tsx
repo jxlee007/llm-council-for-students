@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  Dimensions,
-  Platform,
-} from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import Markdown from "react-native-markdown-display";
 import type { Stage1Response } from "../lib/types";
 
@@ -43,10 +36,6 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
   };
 
   const activeResponse = responses[activeIndex];
-
-  // Responsive height calculation - 40% of screen height, min 300px, max 450px
-  const screenHeight = Dimensions.get("window").height;
-  const contentHeight = Math.max(300, Math.min(screenHeight * 0.4, 450));
 
   return (
     <View className="w-full">
@@ -96,100 +85,81 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
         ))}
       </ScrollView>
 
-      {/* Response content - Fixed height ScrollView */}
-      <View
-        className="rounded-xl overflow-hidden"
-        collapsable={false}
-        style={{
-          height: contentHeight,
-          flexShrink: 0,
-        }}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={true}
-          nestedScrollEnabled={true}
-          scrollEnabled={true}
-          bounces={Platform.OS === "ios"}
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingBottom: 8,
-            flexGrow: 1,
+      {/* Response content - Natural height expansion */}
+      <View className="rounded-xl overflow-hidden px-2 pb-4">
+        <Markdown
+          style={{
+            body: {
+              color: "#ffffff",
+              fontSize: 14,
+              lineHeight: 22,
+              marginBottom: 0,
+            },
+            code_inline: {
+              backgroundColor: "#1a1f26",
+              paddingHorizontal: 8,
+              borderRadius: 6,
+              color: "#e5e7eb",
+              fontSize: 13,
+            },
+            code_block: {
+              backgroundColor: "#1a1f26",
+              padding: 16,
+              borderRadius: 8,
+              color: "#e5e7eb",
+              fontSize: 13,
+              marginVertical: 12,
+            },
+            heading1: {
+              fontSize: 20,
+              fontWeight: "800",
+              marginBottom: 12,
+              marginTop: 0,
+              color: "#ffffff",
+            },
+            heading2: {
+              fontSize: 17,
+              fontWeight: "700",
+              marginBottom: 10,
+              marginTop: 16,
+              color: "#ffffff",
+            },
+            heading3: {
+              fontSize: 15,
+              fontWeight: "600",
+              marginBottom: 8,
+              marginTop: 12,
+              color: "#ffffff",
+            },
+            paragraph: {
+              marginBottom: 12,
+              color: "#d1d5db",
+              fontSize: 14,
+            },
+            bullet_list: {
+              marginLeft: 16,
+              marginVertical: 8,
+            },
+            ordered_list: {
+              marginLeft: 16,
+              marginVertical: 8,
+            },
+            strong: {
+              fontWeight: "700",
+              color: "#f8fafc",
+            },
+            blockquote: {
+              backgroundColor: "#1e293b",
+              borderLeftWidth: 4,
+              borderLeftColor: "#3b82f6",
+              paddingLeft: 16,
+              paddingVertical: 12,
+              marginVertical: 12,
+            },
           }}
         >
-          <Markdown
-            style={{
-              body: {
-                color: "#ffffff",
-                fontSize: 14,
-                lineHeight: 22,
-                marginBottom: 0,
-              },
-              code_inline: {
-                backgroundColor: "#1a1f26",
-                paddingHorizontal: 8,
-                borderRadius: 6,
-                color: "#e5e7eb",
-                fontSize: 13,
-              },
-              code_block: {
-                backgroundColor: "#1a1f26",
-                padding: 16,
-                borderRadius: 8,
-                color: "#e5e7eb",
-                fontSize: 13,
-                marginVertical: 12,
-              },
-              heading1: {
-                fontSize: 20,
-                fontWeight: "800",
-                marginBottom: 12,
-                marginTop: 0,
-                color: "#ffffff",
-              },
-              heading2: {
-                fontSize: 17,
-                fontWeight: "700",
-                marginBottom: 10,
-                marginTop: 16,
-                color: "#ffffff",
-              },
-              heading3: {
-                fontSize: 15,
-                fontWeight: "600",
-                marginBottom: 8,
-                marginTop: 12,
-                color: "#ffffff",
-              },
-              paragraph: {
-                marginBottom: 12,
-                color: "#d1d5db",
-                fontSize: 14,
-              },
-              bullet_list: {
-                marginLeft: 16,
-                marginVertical: 8,
-              },
-              ordered_list: {
-                marginLeft: 16,
-                marginVertical: 8,
-              },
-              strong: {
-                fontWeight: "700",
-                color: "#f8fafc",
-              },
-              blockquote: {
-                backgroundColor: "#1e293b",
-                borderLeftWidth: 4,
-                borderLeftColor: "#3b82f6",
-                paddingLeft: 16,
-                paddingVertical: 12,
-                marginVertical: 12,
-              },
-            }}
-          >
-            {activeResponse.response}
-          </Markdown>
-        </ScrollView>
+          {activeResponse.response}
+        </Markdown>
       </View>
 
       {/* Model indicator */}

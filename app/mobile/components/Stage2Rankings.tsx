@@ -1,4 +1,4 @@
-import { View, Text, ScrollView } from "react-native";
+import { View, Text } from "react-native";
 import { Trophy } from "lucide-react-native";
 import type { Stage2Response, AggregateRanking } from "../lib/types";
 
@@ -109,7 +109,7 @@ export default function Stage2Rankings({
         <Text className="text-sm font-semibold text-foreground mb-2">
           Individual Model Votes
         </Text>
-        <ScrollView className="max-h-60" nestedScrollEnabled={true}>
+        <View>
           {rankings.map((ranking) => (
             <View
               key={ranking.model}
@@ -134,7 +134,7 @@ export default function Stage2Rankings({
               </View>
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
     </View>
   );
