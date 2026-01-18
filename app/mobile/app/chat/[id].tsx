@@ -1,8 +1,5 @@
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-} from "react-native";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { useQuery, useAction, useMutation } from "convex/react";
@@ -14,6 +11,7 @@ import BottomInputBar from "../../components/BottomInputBar";
 import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
+import PresetsModal from "../../components/PresetsModal";
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -41,6 +39,7 @@ function ChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
   const [lastMessage, setLastMessage] = useState<{
     content: string;
     attachment?: ExtractedFile;
@@ -252,10 +251,19 @@ function ChatScreen() {
         )}
       </View>
 
+      {/* Quick Presets Modal */}
+      <PresetsModal
+        visible={showPresets}
+        onClose={() => setShowPresets(false)}
+      />
+
       {/* Unified Input Bar with animated keyboard handling */}
       <BottomInputBar
         onSend={handleSendMessage}
         disabled={isProcessing || isSubmitting}
+        showCouncilBadge
+        councilModelsCount={councilModels.length}
+        onSearchPress={() => setShowPresets(true)}
       />
     </View>
   );
