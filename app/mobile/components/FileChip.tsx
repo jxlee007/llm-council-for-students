@@ -9,17 +9,29 @@ interface FileChipProps {
 
 /**
  * Visual chip for an attached file.
- * Shows filename and a remove button.
+ * Shows file icon and name with X button on top right corner.
  */
 export function FileChip({ name, onRemove }: FileChipProps) {
   return (
-    <View className="flex-row items-center bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1 self-start mb-2 mr-2">
-      <FileText size={14} color="#4f46e5" className="mr-1.5" />
-      <Text className="text-indigo-700 text-xs font-medium mr-2" numberOfLines={1}>
+    <View className="relative w-20 h-20 rounded-xl overflow-hidden bg-secondary border border-border items-center justify-center">
+      {/* File icon */}
+      <FileText size={32} color="#6366f1" strokeWidth={1.5} />
+
+      {/* File name */}
+      <Text
+        className="text-[10px] text-muted-foreground mt-1 px-1 text-center"
+        numberOfLines={1}
+      >
         {name}
       </Text>
-      <TouchableOpacity onPress={onRemove} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-        <X size={14} color="#4f46e5" />
+
+      {/* X button on top right */}
+      <TouchableOpacity
+        onPress={onRemove}
+        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 items-center justify-center"
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <X size={14} color="#ffffff" strokeWidth={2.5} />
       </TouchableOpacity>
     </View>
   );

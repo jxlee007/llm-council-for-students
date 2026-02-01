@@ -16,7 +16,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const createConversation = useMutation(api.conversations.create);
-  const { councilModels } = useUIStore();
+  const { councilModels, activePresetId, chairmanModel } = useUIStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
 
@@ -35,7 +35,7 @@ export default function HomeScreen() {
       });
       // Pass initial message to Chat screen via query params
       router.push(
-        `/chat/${conversationId}?initialMessage=${encodeURIComponent(message)}`
+        `/chat/${conversationId}?initialMessage=${encodeURIComponent(message)}`,
       );
     } catch (error) {
       console.error("Failed to create conversation:", error);
@@ -65,12 +65,12 @@ export default function HomeScreen() {
           onClose={() => setShowPresets(false)}
         />
 
-        {/* Unified Input Bar with animated keyboard handling */}
         <BottomInputBar
           onSend={handleSubmit}
           disabled={isSubmitting}
-          showCouncilBadge
           councilModelsCount={councilModels.length}
+          chairmanModel={chairmanModel}
+          activePresetId={activePresetId}
           onSearchPress={() => setShowPresets(true)}
         />
       </View>

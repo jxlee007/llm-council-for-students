@@ -1,6 +1,12 @@
 import "../global.css";
-import { useEffect } from "react";
-import { View, ActivityIndicator, Text } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import {
+  View,
+  ActivityIndicator,
+  Text,
+  AppState,
+  AppStateStatus,
+} from "react-native";
 import {
   Stack,
   useRouter,
@@ -38,6 +44,7 @@ initLogger();
  * 1. Strictly returns a Navigator (<Stack />) to provide NavigationContainer context.
  * 2. Uses useEffect for side-effect based redirects.
  * 3. Never renders screen components directly.
+ * 4. Handles app resume to prevent auth flicker.
  */
 function AppNavigation() {
   const { isLoading, isAuthenticated } = useConvexAuth();
@@ -46,18 +53,59 @@ function AppNavigation() {
 
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
 
+  // Track app state for resume handling
+  const [isResuming, setIsResuming] = useState(false);
+  const appStateRef = useRef(AppState.currentState);
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle app state changes to prevent auth flicker on resume
   useEffect(() => {
-    if (isLoading) return;
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextState: AppStateStatus) => {
+        if (
+          appStateRef.current.match(/inactive|background/) &&
+          nextState === "active"
+        ) {
+          // App has come to foreground - give Clerk time to rehydrate
+          setIsResuming(true);
+          setTimeout(() => setIsResuming(false), 500);
+        }
+        appStateRef.current = nextState;
+      },
+    );
 
-    const inAuthGroup = segments[0] === "(auth)";
+    return () => subscription.remove();
+  }, []);
 
-    if (!isAuthenticated && !inAuthGroup) {
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && inAuthGroup) {
-      router.replace("/(tabs)");
+  // Navigation guard with debounce to prevent rapid redirects
+  useEffect(() => {
+    if (isLoading || isResuming) return;
+
+    // Clear any pending navigation
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
     }
-  }, [isAuthenticated, segments, isLoading, router]);
 
+    // Debounce navigation decisions
+    navigationTimeoutRef.current = setTimeout(() => {
+      const inAuthGroup = segments[0] === "(auth)";
+
+      if (!isAuthenticated && !inAuthGroup) {
+        router.replace("/(auth)/login");
+      } else if (isAuthenticated && inAuthGroup) {
+        router.replace("/(tabs)");
+      }
+    }, 100);
+
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+      }
+    };
+  }, [isAuthenticated, segments, isLoading, isResuming, router]);
+
+  // Sync user record when authenticated
   useEffect(() => {
     if (isAuthenticated) {
       getOrCreateUser()
@@ -66,7 +114,8 @@ function AppNavigation() {
     }
   }, [isAuthenticated, getOrCreateUser]);
 
-  if (isLoading) {
+  // Show loading during initial load OR app resume
+  if (isLoading || isResuming) {
     return (
       <View
         style={{
@@ -78,7 +127,7 @@ function AppNavigation() {
       >
         <ActivityIndicator size="large" color="#20c997" />
         <Text style={{ color: "#9ca3af", marginTop: 16 }}>
-          Connecting to Council...
+          {isResuming ? "Restoring session..." : "Connecting to Council..."}
         </Text>
       </View>
     );

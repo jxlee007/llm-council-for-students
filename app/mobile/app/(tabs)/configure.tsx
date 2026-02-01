@@ -6,12 +6,16 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
+  TextInput,
+  Switch,
 } from "react-native";
-import { Crown, Check } from "lucide-react-native";
+import { Crown, Check, CheckCircle, Trash2 } from "lucide-react-native";
 import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { AnimatedButton } from "../../components/AnimatedButton";
+import { useMutation, useQuery, useAction } from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 import { PRESETS } from "../../lib/presets";
 
@@ -22,10 +26,20 @@ function ConfigureScreen() {
     setCouncilModels,
     setChairmanModel,
     activePresetId,
+    saveApiKey,
+    clearApiKey,
   } = useUIStore();
 
   const [availableModels, setAvailableModels] = useState<Model[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Use Convex as source of truth for API key status
+  const hasApiKeyInDB = useQuery(api.users.hasApiKey);
+  const saveApiKeySecure = useAction(api.userActions.saveApiKeySecure);
+  const clearApiKeyInDB = useMutation(api.users.clearApiKey);
 
   useEffect(() => {
     loadModels();
@@ -56,100 +70,202 @@ function ConfigureScreen() {
     }
   };
 
+  const handleSaveApiKey = async () => {
+    if (!apiKey.trim()) {
+      Alert.alert("Error", "Please enter a valid API key");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await saveApiKeySecure({ apiKey: apiKey.trim() });
+      await saveApiKey(apiKey.trim());
+      setApiKey("");
+      Alert.alert(
+        "API Key Saved",
+        "Your API key has been encrypted and stored securely.",
+      );
+    } catch (error) {
+      console.error("Failed to save API key:", error);
+      Alert.alert("Error", "Failed to save API key. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClearApiKey = () => {
+    Alert.alert(
+      "Remove API Key",
+      "Are you sure you want to remove your API key?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearApiKeyInDB();
+              await clearApiKey();
+              Alert.alert("Success", "API key removed");
+            } catch (error) {
+              console.error("Failed to clear API key:", error);
+              Alert.alert(
+                "Error",
+                "Failed to remove API key. Please try again.",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* Header */}
-        <View className="p-6 bg-white border-b border-gray-100">
-          <Text className="text-2xl font-bold text-gray-900">
-            Council Configuration
+        {/* API Configuration Section */}
+        <View className="px-4 mb-4">
+          <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            API Configuration
           </Text>
-          <Text className="text-gray-500 mt-1">
-            Select a specialized team or build your own council.
-          </Text>
-        </View>
-
-        {/* Active Configuration */}
-        <View className="px-4 py-2 mb-4">
-          <View className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
-            {activePresetId && PRESETS[activePresetId] && (
-              <View className="flex-row mb-3">
-                <View className="bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100">
-                  <Text className="text-indigo-600 text-xs font-semibold">
-                    {PRESETS[activePresetId].label} Model Set
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <View className="mb-2">
-              <Text className="text-sm font-semibold text-gray-900">
-                Current Council ({councilModels.length}/4)
+          <View className="bg-card rounded-xl border border-border overflow-hidden">
+            <View className="p-4 border-b border-border">
+              <Text className="text-base font-semibold text-foreground">
+                OpenRouter API Key
+              </Text>
+              <Text className="text-sm text-muted-foreground mt-1">
+                Bring your own key for unlimited free usage
               </Text>
             </View>
-            <View className="flex-row flex-wrap gap-2">
-              {councilModels.length === 0 ? (
-                <Text className="text-gray-400 italic text-sm">
-                  No models selected
-                </Text>
-              ) : (
-                councilModels.map((id) => (
-                  <View key={id} className="bg-indigo-100 px-2 py-1 rounded-md">
-                    <Text className="text-indigo-800 text-xs" numberOfLines={1}>
-                      {id.split("/")[1] || id}
+
+            {hasApiKeyInDB === undefined ? (
+              <View className="p-4 items-center">
+                <ActivityIndicator size="small" color="#6366f1" />
+              </View>
+            ) : hasApiKeyInDB ? (
+              <View className="p-4">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center">
+                    <CheckCircle size={24} color="#10b981" className="mr-2" />
+                    <Text className="text-green-500 font-medium">
+                      API Key configured
                     </Text>
                   </View>
-                ))
-              )}
-            </View>
-
-            <Text className="text-sm font-semibold text-gray-900 mt-4 mb-2">
-              Chairman
-            </Text>
-            <View className="bg-amber-100 self-start px-3 py-1 rounded-md border border-amber-200 flex-row items-center">
-              <Crown size={12} color="#92400e" className="mr-1.5" />
-              <Text className="text-amber-900 text-xs font-bold">
-                {chairmanModel
-                  ? chairmanModel.split("/")[1] || chairmanModel
-                  : "Default (Gemini 2.0)"}
-              </Text>
-            </View>
+                  <TouchableOpacity
+                    onPress={handleClearApiKey}
+                    className="p-2 bg-red-500/10 rounded-lg flex-row items-center"
+                  >
+                    <Trash2 size={16} color="#ef4444" />
+                    <Text className="text-red-500 text-sm font-medium ml-1">
+                      Remove
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View className="p-4">
+                <View className="flex-row items-center mb-3">
+                  <TextInput
+                    className="flex-1 bg-secondary rounded-lg px-4 py-3 text-base text-foreground"
+                    placeholder="sk-or-..."
+                    placeholderTextColor="#6b7280"
+                    value={apiKey}
+                    onChangeText={setApiKey}
+                    secureTextEntry={!showApiKey}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                <View className="flex-row items-center justify-between mb-4">
+                  <Text className="text-sm text-muted-foreground">
+                    Show API key
+                  </Text>
+                  <Switch
+                    value={showApiKey}
+                    onValueChange={setShowApiKey}
+                    trackColor={{ false: "#374151", true: "#818cf8" }}
+                    thumbColor={showApiKey ? "#6366f1" : "#9ca3af"}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={handleSaveApiKey}
+                  disabled={isSaving}
+                  className="bg-primary rounded-lg py-3 items-center"
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color="#0f1419" />
+                  ) : (
+                    <Text className="text-background font-semibold">
+                      Save API Key
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
         {/* Manual Selection */}
         <View className="px-4">
-          <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-            Available Free Models
-          </Text>
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Available Free Models
+            </Text>
+            <Text className="text-xs font-medium text-primary">
+              {availableModels.length} models
+            </Text>
+          </View>
 
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#4f46e5" />
+          {!hasApiKeyInDB ? (
+            <View className="bg-card rounded-xl border border-border p-8 items-center">
+              <Text className="text-muted-foreground text-center text-sm mb-2">
+                🔑 API Key Required
+              </Text>
+              <Text className="text-muted-foreground text-center text-xs">
+                Add your OpenRouter API key above to view available free models
+              </Text>
+            </View>
+          ) : isLoading ? (
+            <ActivityIndicator size="large" color="#6366f1" />
           ) : (
-            <View className="bg-white rounded-xl overflow-hidden border border-gray-100">
+            <View className="bg-card rounded-xl overflow-hidden border border-border">
               {availableModels.map((model, index) => {
                 const isSelected = councilModels.includes(model.id);
                 const isChairman = chairmanModel === model.id;
 
                 return (
-                  <View
+                  <TouchableOpacity
                     key={model.id}
-                    className={`p-4 border-b border-gray-50 flex-row items-center justify-between ${
-                      isSelected ? "bg-indigo-50/50" : ""
+                    onPress={() => toggleModel(model.id)}
+                    className={`p-4 border-b border-border flex-row items-center justify-between ${
+                      councilModels.includes(model.id)
+                        ? "bg-primary/10"
+                        : "bg-card"
                     }`}
                   >
-                    <View className="flex-1 mr-4">
-                      <Text className="font-medium text-gray-900">
-                        {model.name}
-                      </Text>
-                      <Text className="text-xs text-gray-500 mt-0.5 mb-1.5">
+                    <View className="flex-1 pr-3">
+                      <View className="flex-row items-center mb-1">
+                        <Text
+                          className={`text-base font-semibold ${
+                            councilModels.includes(model.id)
+                              ? "text-primary"
+                              : "text-foreground"
+                          }`}
+                        >
+                          {model.name}
+                        </Text>
+                      </View>
+                      <Text className="text-xs text-muted-foreground mt-0.5 mb-1.5">
                         {model.provider && model.provider !== "Unknown"
                           ? model.provider
                           : "Model"}{" "}
-                        : {Math.round(model.context_length / 1024)}k context
+                        • Context:{" "}
+                        {model.context_length
+                          ? `${(model.context_length / 1000).toFixed(0)}K`
+                          : "N/A"}
                       </Text>
 
                       {/* UI Pills */}
@@ -169,7 +285,7 @@ function ConfigureScreen() {
                             (p) =>
                               p !== "Free" &&
                               p !== "Unknown" &&
-                              !p.endsWith("Context")
+                              !p.endsWith("Context"),
                           )
                           .map((pill, i) => (
                             <View
@@ -214,7 +330,7 @@ function ConfigureScreen() {
                         )}
                       </AnimatedButton>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
             </View>

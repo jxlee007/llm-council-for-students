@@ -6,7 +6,7 @@ import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useUIStore } from "../../lib/store";
 import type { Message, AggregateRanking } from "../../lib/types";
-import { ExtractedFile } from "../../lib/files";
+import { ExtractedFile, ExtractedImage } from "../../lib/files";
 import BottomInputBar from "../../components/BottomInputBar";
 import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
@@ -34,7 +34,7 @@ function ChatScreen() {
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
-  const { councilModels, chairmanModel } = useUIStore();
+  const { councilModels, chairmanModel, activePresetId } = useUIStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +43,7 @@ function ChatScreen() {
   const [lastMessage, setLastMessage] = useState<{
     content: string;
     attachment?: ExtractedFile;
+    image?: ExtractedImage;
   } | null>(null);
   const hasProcessedInitialMessage = useRef(false);
 
@@ -94,6 +95,7 @@ function ChatScreen() {
   const handleSendMessage = async (
     content: string,
     attachment?: ExtractedFile,
+    image?: ExtractedImage,
   ) => {
     if (!id || !conversation || isSubmitting || isProcessing) return;
 
@@ -125,14 +127,27 @@ function ChatScreen() {
       prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
     }
 
+    // If image is attached, note it in the prompt (vision processing happens server-side)
+    if (image) {
+      prompt = content || "Please analyze this image.";
+    }
+
     try {
       const result = await runCouncil({
         conversationId,
         content:
-          prompt || (attachment ? `[Attached File: ${attachment.name}]` : ""),
+          prompt ||
+          (attachment
+            ? `[Attached File: ${attachment.name}]`
+            : image
+              ? `[Attached Image: ${image.name}]`
+              : ""),
         attachmentIds,
         councilMembers: councilModels.length > 0 ? councilModels : undefined,
         chairmanModel: chairmanModel || undefined,
+        // Pass image info for vision processing
+        imageBase64: image?.base64,
+        imageMimeType: image?.type,
       });
 
       if (!result.success) {
@@ -142,7 +157,7 @@ function ChatScreen() {
       console.error("Failed to process message:", err);
       setError(err.message || "Council connection failed");
       setCanRetry(true);
-      setLastMessage({ content, attachment });
+      setLastMessage({ content, attachment, image });
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +167,11 @@ function ChatScreen() {
     if (lastMessage) {
       setError(null);
       setCanRetry(false);
-      handleSendMessage(lastMessage.content, lastMessage.attachment);
+      handleSendMessage(
+        lastMessage.content,
+        lastMessage.attachment,
+        lastMessage.image,
+      );
     }
   };
 
@@ -261,8 +280,9 @@ function ChatScreen() {
       <BottomInputBar
         onSend={handleSendMessage}
         disabled={isProcessing || isSubmitting}
-        showCouncilBadge
         councilModelsCount={councilModels.length}
+        chairmanModel={chairmanModel}
+        activePresetId={activePresetId}
         onSearchPress={() => setShowPresets(true)}
       />
     </View>

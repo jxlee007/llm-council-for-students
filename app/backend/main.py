@@ -4,13 +4,15 @@ This API provides LLM computation endpoints only. All data persistence
 is handled by Convex on the client side.
 """
 
-from fastapi import FastAPI, HTTPException, Header, Request
+from fastapi import FastAPI, HTTPException, Header, Request, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
 import asyncio
+
+from .input.normalize import normalize_user_input
 
 from .council import (
     run_full_council,
@@ -120,6 +122,92 @@ async def send_message(
             "stage3": stage3_result,
             "metadata": metadata
         }
+    except CouncilException:
+        raise
+    except Exception as e:
+        raise CouncilException(
+            code=ErrorCode.INTERNAL_ERROR,
+            message="Council processing failed. Please try again.",
+            details={"original_error": str(e)}
+        )
+
+
+@app.post("/api/conversations/{conversation_id}/message/vision")
+async def send_message_with_vision(
+    conversation_id: str,
+    content: Optional[str] = Form(None),
+    council_members: Optional[str] = Form(None),  # JSON string of list
+    chairman_model: Optional[str] = Form(None),
+    image: Optional[UploadFile] = File(None),
+    x_openrouter_key: Optional[str] = Header(None, alias="X-OpenRouter-Key")
+):
+    """
+    Send a message with optional image and run the 3-stage council process.
+    Images are processed by a vision model first, then council reasons on extracted text.
+    
+    Args:
+        content: Optional text message
+        council_members: Optional JSON string of model IDs
+        chairman_model: Optional chairman model ID
+        image: Optional image file upload
+        
+    Note: This endpoint does NOT persist messages - Convex handles persistence.
+    Pass your OpenRouter API key in the X-OpenRouter-Key header to use BYOK.
+    """
+    if not x_openrouter_key:
+        raise CouncilException(
+            code=ErrorCode.MISSING_API_KEY,
+            message="OpenRouter API key is required. Please configure your API key in Settings."
+        )
+    
+    # Parse council_members from JSON string if provided
+    parsed_council_members = None
+    if council_members:
+        try:
+            parsed_council_members = json.loads(council_members)
+        except json.JSONDecodeError:
+            parsed_council_members = None
+    
+    try:
+        # Read image bytes if provided
+        image_bytes = None
+        mime_type = None
+        if image:
+            image_bytes = await image.read()
+            mime_type = image.content_type
+        
+        # Normalize input (text, image, or both) into council-ready prompt
+        normalized_prompt = await normalize_user_input(
+            text=content,
+            image_bytes=image_bytes,
+            mime_type=mime_type,
+            api_key=x_openrouter_key
+        )
+        
+        # Run the 3-stage council process on normalized prompt
+        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
+            normalized_prompt,
+            council_members=parsed_council_members,
+            chairman_model=chairman_model,
+            api_key=x_openrouter_key
+        )
+        
+        # Include vision processing info in metadata
+        metadata["vision_processed"] = image_bytes is not None
+
+        return {
+            "stage1": stage1_results,
+            "stage2": stage2_results,
+            "stage3": stage3_result,
+            "metadata": metadata
+        }
+    except ValueError as e:
+        # Vision processing failed
+        raise CouncilException(
+            code=ErrorCode.PROVIDER_ERROR,
+            message=f"Image processing failed: {str(e)}",
+            details={"error_type": "vision_failure"}
+        )
     except CouncilException:
         raise
     except Exception as e:
