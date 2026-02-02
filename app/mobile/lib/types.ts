@@ -53,6 +53,9 @@ export interface UserMessage {
     role: 'user';
     content: string;
     imageBase64?: string;
+    imageUrl?: string;
+    visionContext?: string;
+    type?: 'text' | 'image' | 'image_text';
 }
 
 /** Assistant message with 3-stage council response */

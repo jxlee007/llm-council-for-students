@@ -85,11 +85,19 @@ export const runCouncil = action({
         });
 
         // 1. Create user message
+        const type = args.imageBase64 ? (args.content ? "image_text" : "image") : "text";
+        // Create a data URI for imageUrl if image is present
+        const imageUrl = args.imageBase64
+            ? `data:${args.imageMimeType || "image/jpeg"};base64,${args.imageBase64}`
+            : undefined;
+
         await ctx.runMutation(internal.councilMutations.insertUserMessage, {
             conversationId: args.conversationId,
             content: args.content,
             attachmentIds: args.attachmentIds,
             imageBase64: args.imageBase64,
+            imageUrl: imageUrl,
+            type: type as "text" | "image" | "image_text",
         });
 
         // 2. Create placeholder assistant message (processing)
