@@ -39,7 +39,7 @@ interface Stage3Response {
  */
 interface SSEEvent {
     type: string;
-    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string };
+    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string } | Record<string, any>;
     message?: string;
     metadata?: {
         label_to_model?: Record<string, string>;
@@ -85,11 +85,19 @@ export const runCouncil = action({
         });
 
         // 1. Create user message
-        await ctx.runMutation(internal.councilMutations.insertUserMessage, {
+        const type = args.imageBase64 ? (args.content ? "image_text" : "image") : "text";
+        // Create a data URI for imageUrl if image is present
+        const imageUrl = args.imageBase64
+            ? `data:${args.imageMimeType || "image/jpeg"};base64,${args.imageBase64}`
+            : undefined;
+
+        const userMessageId = await ctx.runMutation(internal.councilMutations.insertUserMessage, {
             conversationId: args.conversationId,
             content: args.content,
             attachmentIds: args.attachmentIds,
             imageBase64: args.imageBase64,
+            imageUrl: imageUrl,
+            type: type as "text" | "image" | "image_text",
         });
 
         // 2. Create placeholder assistant message (processing)
@@ -184,7 +192,12 @@ export const runCouncil = action({
                         try {
                             const event: SSEEvent = JSON.parse(line.slice(6));
 
-                            if (event.type === "stage1_complete" && event.data) {
+                            if (event.type === "vision_complete" && event.data) {
+                                await ctx.runMutation(internal.councilMutations.updateMessageVision, {
+                                    messageId: userMessageId,
+                                    visionContext: JSON.stringify(event.data),
+                                });
+                            } else if (event.type === "stage1_complete" && event.data) {
                                 await ctx.runMutation(internal.councilMutations.updateStage1, {
                                     messageId: assistantMessageId,
                                     stage1: event.data as Stage1Response[],

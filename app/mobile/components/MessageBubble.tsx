@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Image,
   TouchableOpacity,
+  useWindowDimensions,
 } from "react-native";
 import { Bot } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
@@ -26,22 +27,20 @@ function MessageBubble({
   aggregateRankings,
   onImagePress,
 }: MessageBubbleProps) {
+  const { width } = useWindowDimensions();
+
   if (message.role === "user") {
-    // Debug logging
-    console.log("[MessageBubble] User message:", {
-      hasImageBase64: !!message.imageBase64,
-      imageBase64Length: message.imageBase64?.length,
-      imageBase64Preview: message.imageBase64?.substring(0, 50),
-    });
+    // Determine image source: prioritize imageUrl, then fall back to imageBase64
+    let imageUri = message.imageUrl;
+    if (!imageUri && message.imageBase64) {
+      const isPng = message.imageBase64.startsWith("iVBOR");
+      const mimeType = isPng ? "image/png" : "image/jpeg";
+      imageUri = `data:${mimeType};base64,${message.imageBase64}`;
+    }
 
-    // Simple mime detection
-    const isPng = message.imageBase64?.startsWith("iVBOR");
-    const mimeType = isPng ? "image/png" : "image/jpeg";
-    const imageUri = message.imageBase64
-      ? `data:${mimeType};base64,${message.imageBase64}`
-      : null;
-
-    console.log("[MessageBubble] Image URI:", imageUri ? "CREATED" : "NULL");
+    // Styles from requirements
+    // Image bubble: width min(80% screen, 280px), max-height 250px, radius 12, margin-bottom 6
+    const imageWidth = Math.min(width * 0.8, 280);
 
     return (
       <View className="items-end mb-4">
@@ -49,20 +48,42 @@ function MessageBubble({
           <TouchableOpacity
             onPress={() => onImagePress?.(imageUri!)}
             activeOpacity={0.9}
-            className="mb-1.5 rounded-xl overflow-hidden border border-border max-w-[80%]"
+            style={{
+              marginBottom: 6,
+              borderRadius: 12,
+              overflow: 'hidden',
+              borderWidth: 1,
+              borderColor: '#e5e7eb', // border-border
+              width: imageWidth,
+            }}
           >
             <Image
               source={{ uri: imageUri }}
-              style={{ width: 220, height: 250 }}
+              style={{
+                width: '100%',
+                height: 250,
+              }}
               resizeMode="cover"
             />
           </TouchableOpacity>
         )}
-        <View className="bg-primary rounded-2xl rounded-tr-none px-4 py-3 max-w-[85%]">
-          <Text className="text-primary-foreground text-base leading-6">
-            {message.content}
-          </Text>
-        </View>
+
+        {/* Render text bubble if content exists or if no image (placeholder) */}
+        {(message.content || !imageUri) && (
+            <View
+                style={{
+                    backgroundColor: "#2ecc71", // Green requirement
+                    borderRadius: 18,
+                    borderTopRightRadius: 0,
+                    padding: 12,
+                    maxWidth: "85%",
+                }}
+            >
+              <Text style={{ color: "#ffffff", fontSize: 16, lineHeight: 24 }}>
+                {message.content}
+              </Text>
+            </View>
+        )}
       </View>
     );
   }
