@@ -39,7 +39,7 @@ interface Stage3Response {
  */
 interface SSEEvent {
     type: string;
-    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string };
+    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string } | Record<string, any>;
     message?: string;
     metadata?: {
         label_to_model?: Record<string, string>;
@@ -91,7 +91,7 @@ export const runCouncil = action({
             ? `data:${args.imageMimeType || "image/jpeg"};base64,${args.imageBase64}`
             : undefined;
 
-        await ctx.runMutation(internal.councilMutations.insertUserMessage, {
+        const userMessageId = await ctx.runMutation(internal.councilMutations.insertUserMessage, {
             conversationId: args.conversationId,
             content: args.content,
             attachmentIds: args.attachmentIds,
@@ -192,7 +192,12 @@ export const runCouncil = action({
                         try {
                             const event: SSEEvent = JSON.parse(line.slice(6));
 
-                            if (event.type === "stage1_complete" && event.data) {
+                            if (event.type === "vision_complete" && event.data) {
+                                await ctx.runMutation(internal.councilMutations.updateMessageVision, {
+                                    messageId: userMessageId,
+                                    visionContext: JSON.stringify(event.data),
+                                });
+                            } else if (event.type === "stage1_complete" && event.data) {
                                 await ctx.runMutation(internal.councilMutations.updateStage1, {
                                     messageId: assistantMessageId,
                                     stage1: event.data as Stage1Response[],

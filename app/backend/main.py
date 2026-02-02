@@ -109,9 +109,15 @@ async def send_message(
         )
     
     try:
+        # Normalize input (text only here, but interface requires tuple unpacking)
+        normalized_prompt, _ = await normalize_user_input(
+            text=request.content,
+            api_key=x_openrouter_key
+        )
+
         # Run the 3-stage council process with user's API key
         stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-            request.content,
+            normalized_prompt,
             council_members=request.council_members,
             chairman_model=request.chairman_model,
             api_key=x_openrouter_key
@@ -179,7 +185,7 @@ async def send_message_with_vision(
             mime_type = image.content_type
         
         # Normalize input (text, image, or both) into council-ready prompt
-        normalized_prompt = await normalize_user_input(
+        normalized_prompt, vision_context = await normalize_user_input(
             text=content,
             image_bytes=image_bytes,
             mime_type=mime_type,
@@ -196,6 +202,8 @@ async def send_message_with_vision(
         
         # Include vision processing info in metadata
         metadata["vision_processed"] = image_bytes is not None
+        if vision_context:
+            metadata["vision_context"] = vision_context
 
         return {
             "stage1": stage1_results,
@@ -268,16 +276,20 @@ async def send_message_stream(
                     image_bytes = base64.b64decode(request.image_data["data"])
                     mime_type = request.image_data.get("mime_type", "image/jpeg")
                 except Exception as e:
-                    print(f"Failed to decode image data: {e}")
-                    # Continue without image if decode fails, or error out?
-                    pass
+                    # Report invalid image data to client
+                    yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Failed to decode image data. Please check the file and try again.'})}\n\n"
+                    return
 
-            normalized_prompt = await normalize_user_input(
+            normalized_prompt, vision_context = await normalize_user_input(
                 text=request.content,
                 image_bytes=image_bytes,
                 mime_type=mime_type,
                 api_key=api_key
             )
+
+            # Emit vision context if available
+            if vision_context:
+                yield f"data: {json.dumps({'type': 'vision_complete', 'data': vision_context})}\n\n"
 
             # Start title generation in parallel (don't await yet)
             title_task = asyncio.create_task(generate_conversation_title(normalized_prompt, api_key=api_key))
