@@ -67,6 +67,8 @@ export const runCouncil = action({
         attachmentIds: v.optional(v.array(v.id("attachments"))),
         councilMembers: v.optional(v.array(v.string())),
         chairmanModel: v.optional(v.string()),
+        imageBase64: v.optional(v.string()),
+        imageMimeType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -87,6 +89,7 @@ export const runCouncil = action({
             conversationId: args.conversationId,
             content: args.content,
             attachmentIds: args.attachmentIds,
+            imageBase64: args.imageBase64,
         });
 
         // 2. Create placeholder assistant message (processing)
@@ -129,6 +132,12 @@ export const runCouncil = action({
         }
         if (args.chairmanModel) {
             body.chairman_model = args.chairmanModel;
+        }
+        if (args.imageBase64) {
+            body.image_data = {
+                data: args.imageBase64,
+                mime_type: args.imageMimeType || "image/jpeg",
+            };
         }
 
         try {

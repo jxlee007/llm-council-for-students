@@ -41,6 +41,7 @@ export default defineSchema({
     role: v.union(v.literal("user"), v.literal("assistant")),
     content: v.string(),
     attachmentIds: v.optional(v.array(v.id("attachments"))),
+    imageBase64: v.optional(v.string()), // For storing uploaded image preview
     stage1: v.optional(
       v.array(
         v.object({

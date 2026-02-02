@@ -52,6 +52,7 @@ export interface AggregateRanking {
 export interface UserMessage {
     role: 'user';
     content: string;
+    imageBase64?: string;
 }
 
 /** Assistant message with 3-stage council response */

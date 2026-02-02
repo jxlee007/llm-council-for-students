@@ -114,6 +114,12 @@ export default function BottomInputBar({
 
   const handleSend = () => {
     const trimmed = message.trim();
+    console.log("[BottomInputBar] handleSend called:", {
+      message: trimmed,
+      attachmentsCount: attachments.length,
+      imagesCount: images.length,
+      firstImageBase64Length: images[0]?.base64?.length,
+    });
     if ((trimmed || totalAttachments > 0) && !disabled && isOnline) {
       onSend(
         trimmed,

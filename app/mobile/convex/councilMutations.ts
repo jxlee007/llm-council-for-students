@@ -14,6 +14,7 @@ export const insertUserMessage = internalMutation({
         conversationId: v.id("conversations"),
         content: v.string(),
         attachmentIds: v.optional(v.array(v.id("attachments"))),
+        imageBase64: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const messageId = await ctx.db.insert("messages", {
@@ -21,6 +22,7 @@ export const insertUserMessage = internalMutation({
             role: "user",
             content: args.content,
             attachmentIds: args.attachmentIds,
+            imageBase64: args.imageBase64,
             createdAt: Date.now(),
         });
 

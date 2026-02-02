@@ -12,6 +12,7 @@ import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
 import PresetsModal from "../../components/PresetsModal";
+import { FullscreenImageModal } from "../../components/FullscreenImageModal";
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -45,12 +46,12 @@ function ChatScreen() {
     attachment?: ExtractedFile;
     image?: ExtractedImage;
   } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const hasProcessedInitialMessage = useRef(false);
 
   // Derive processing state from messages
   const processingMessage = messages?.find(
-    (m: Message & { processing?: boolean }) =>
-      m.role === "assistant" && m.processing === true,
+    (m: any) => m.role === "assistant" && m.processing === true,
   );
   const isProcessing = !!processingMessage;
 
@@ -94,9 +95,13 @@ function ChatScreen() {
 
   const handleSendMessage = async (
     content: string,
-    attachment?: ExtractedFile,
-    image?: ExtractedImage,
+    attachments?: ExtractedFile[],
+    images?: ExtractedImage[],
   ) => {
+    // Extract first item from arrays (BottomInputBar passes arrays)
+    const attachment = attachments?.[0];
+    const image = images?.[0];
+
     if (!id || !conversation || isSubmitting || isProcessing) return;
 
     let attachmentIds: Id<"attachments">[] | undefined;
@@ -133,6 +138,13 @@ function ChatScreen() {
     }
 
     try {
+      console.log("[ChatScreen] Sending message with image:", {
+        hasImage: !!image,
+        imageBase64Length: image?.base64?.length,
+        imageMimeType: image?.type,
+        imageBase64Preview: image?.base64?.substring(0, 50),
+      });
+
       const result = await runCouncil({
         conversationId,
         content:
@@ -149,6 +161,8 @@ function ChatScreen() {
         imageBase64: image?.base64,
         imageMimeType: image?.type,
       });
+
+      console.log("[ChatScreen] runCouncil result:", result);
 
       if (!result.success) {
         setError(result.error || "Council processing failed");
@@ -169,8 +183,8 @@ function ChatScreen() {
       setCanRetry(false);
       handleSendMessage(
         lastMessage.content,
-        lastMessage.attachment,
-        lastMessage.image,
+        lastMessage.attachment ? [lastMessage.attachment] : undefined,
+        lastMessage.image ? [lastMessage.image] : undefined,
       );
     }
   };
@@ -178,7 +192,10 @@ function ChatScreen() {
   const renderMessage = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
       <FadeInView delay={index > 0 ? 0 : 300}>
-        <MessageBubble message={item} />
+        <MessageBubble
+          message={item}
+          onImagePress={(uri: string) => setFullscreenImage(uri)}
+        />
       </FadeInView>
     ),
     [],
@@ -274,6 +291,12 @@ function ChatScreen() {
       <PresetsModal
         visible={showPresets}
         onClose={() => setShowPresets(false)}
+      />
+
+      <FullscreenImageModal
+        visible={!!fullscreenImage}
+        imageUri={fullscreenImage}
+        onClose={() => setFullscreenImage(null)}
       />
 
       {/* Unified Input Bar with animated keyboard handling */}
