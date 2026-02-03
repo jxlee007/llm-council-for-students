@@ -61,6 +61,8 @@ export default function BottomInputBar({
   const [isOnline, setIsOnline] = useState(true);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
 
+  const MAX_CHARS = 2000;
+
   // Total number of attachments
   const totalAttachments = attachments.length + images.length;
 
@@ -216,17 +218,23 @@ export default function BottomInputBar({
 
         <View className="bg-card rounded-2xl border border-border overflow-hidden">
           {/* Text Input */}
-          <TextInput
-            className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
-            placeholder={
-              isOnline ? "Ask anything..." : "Offline - Connect to send"
-            }
-            placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            editable={!effectivelyDisabled}
-          />
+          <View>
+            <TextInput
+              className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
+              placeholder={
+                isOnline ? "Ask anything..." : "Offline - Connect to send"
+              }
+              placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
+              value={message}
+              onChangeText={setMessage}
+              multiline
+              maxLength={MAX_CHARS}
+              editable={!effectivelyDisabled}
+            />
+            <Text className="text-right text-xs text-muted-foreground px-4 pb-1">
+              {message.length}/{MAX_CHARS}
+            </Text>
+          </View>
 
           {/* Action Row */}
           <View className="flex-row items-center justify-between px-3 pb-3">

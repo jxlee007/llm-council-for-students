@@ -144,33 +144,31 @@ function ChatScreen() {
     setError(null);
     setIsSubmitting(true);
 
-    let prompt = content;
-    if (attachment) {
-      prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
-    }
+    // Context is for the LLM (hidden from user)
+    // Content is for the User (displayed in chat)
+    let context: string | undefined = undefined;
+    let displayContent = content;
 
-    // If image is attached, note it in the prompt (vision processing happens server-side)
-    if (image) {
-      prompt = content || "Please analyze this image.";
+    if (attachment) {
+      context = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}`;
+      if (!displayContent) {
+        displayContent = "Please analyze this file.";
+      }
+    } else if (image && !displayContent) {
+       displayContent = "Please analyze this image.";
     }
 
     try {
-      console.log("[ChatScreen] Sending message with image:", {
+      console.log("[ChatScreen] Sending message:", {
         hasImage: !!image,
-        imageBase64Length: image?.base64?.length,
-        imageMimeType: image?.type,
-        imageBase64Preview: image?.base64?.substring(0, 50),
+        hasAttachment: !!attachment,
+        contentLength: displayContent.length,
       });
 
       const result = await runCouncil({
         conversationId,
-        content:
-          prompt ||
-          (attachment
-            ? `[Attached File: ${attachment.name}]`
-            : image
-              ? `[Attached Image: ${image.name}]`
-              : ""),
+        content: displayContent,
+        context: context,
         attachmentIds,
         councilMembers: councilModels.length > 0 ? councilModels : undefined,
         chairmanModel: chairmanModel || undefined,
