@@ -271,22 +271,29 @@ async def send_message_stream(
             image_bytes = None
             mime_type = None
 
-            # Strict Vision Guard: Only process image if explicitly marked as 'image' OR (implicit for backward compat) NOT 'text_file'
-            should_process_image = False
-            if request.attachment_type == 'image':
-                should_process_image = True
-            elif request.attachment_type is None and request.image_data:
-                should_process_image = True # Backward compatibility
+            # Strict Vision Guard: Only process image if image data is present AND looks like an image.
+            # We ignore request.attachment_type for this decision to allow mixed content (text + image),
+            # relying instead on the data presence and mime type.
 
-            if should_process_image and request.image_data and request.image_data.get("data"):
-                try:
-                    # Decode base64 data
-                    image_bytes = base64.b64decode(request.image_data["data"])
-                    mime_type = request.image_data.get("mime_type", "image/jpeg")
-                except Exception as e:
-                    # Report invalid image data to client
-                    yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Failed to decode image data. Please check the file and try again.'})}\n\n"
-                    return
+            image_data_payload = request.image_data
+            has_image_data = image_data_payload and image_data_payload.get("data")
+
+            if has_image_data:
+                # Validate mime type guard
+                payload_mime = image_data_payload.get("mime_type", "")
+                if not payload_mime.startswith("image/"):
+                    # If data is sent but not an image, skip vision processing (guard against mis-routing)
+                    image_bytes = None
+                    mime_type = None
+                else:
+                    try:
+                        # Decode base64 data
+                        image_bytes = base64.b64decode(image_data_payload["data"])
+                        mime_type = payload_mime or "image/jpeg"
+                    except Exception as e:
+                        # Report invalid image data to client
+                        yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Failed to decode image data. Please check the file and try again.'})}\n\n"
+                        return
 
             normalized_prompt, vision_context = await normalize_user_input(
                 text=request.content,
