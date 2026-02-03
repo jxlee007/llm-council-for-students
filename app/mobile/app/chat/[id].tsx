@@ -1,8 +1,5 @@
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-} from "react-native";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { useQuery, useAction, useMutation } from "convex/react";
@@ -14,14 +11,8 @@ import BottomInputBar from "../../components/BottomInputBar";
 import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
-<<<<<<< HEAD
-<<<<<<< HEAD
 import PresetsModal from "../../components/PresetsModal";
 import { FullscreenImageModal } from "../../components/FullscreenImageModal";
-=======
->>>>>>> parent of d7a5fd2 ()
-=======
->>>>>>> parent of d7a5fd2 ()
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -44,7 +35,13 @@ function ChatScreen() {
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
-  const { councilModels, chairmanModel, activePresetId, pendingMessage, setPendingMessage } = useUIStore();
+  const {
+    councilModels,
+    chairmanModel,
+    activePresetId,
+    pendingMessage,
+    setPendingMessage,
+  } = useUIStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,14 +83,20 @@ function ChatScreen() {
   // Process initial message from Home screen on mount
   useEffect(() => {
     // Check pendingMessage from store (new mechanism)
-    if (pendingMessage && conversation && messages !== undefined && messages.length === 0 && !hasProcessedInitialMessage.current) {
+    if (
+      pendingMessage &&
+      conversation &&
+      messages !== undefined &&
+      messages.length === 0 &&
+      !hasProcessedInitialMessage.current
+    ) {
       hasProcessedInitialMessage.current = true;
       console.log("[ChatScreen] Processing pending message:", pendingMessage);
 
       handleSendMessage(
         pendingMessage.content,
         pendingMessage.attachments,
-        pendingMessage.images
+        pendingMessage.images,
       );
 
       // Clear the pending message
@@ -156,19 +159,19 @@ function ChatScreen() {
     // Content is for the User (displayed in chat)
     let context: string | undefined = undefined;
     let displayContent = content;
-    let attachmentType: 'image' | 'text_file' | undefined = undefined;
+    let attachmentType: "image" | "text_file" | undefined = undefined;
 
     if (attachment) {
       context = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}`;
-      attachmentType = 'text_file';
+      attachmentType = "text_file";
       if (!displayContent) {
         displayContent = "Please analyze this file.";
       }
     } else if (image) {
-       attachmentType = 'image';
-       if (!displayContent) {
-         displayContent = "Please analyze this image.";
-       }
+      attachmentType = "image";
+      if (!displayContent) {
+        displayContent = "Please analyze this image.";
+      }
     }
 
     try {
@@ -317,8 +320,6 @@ function ChatScreen() {
         )}
       </View>
 
-<<<<<<< HEAD
-<<<<<<< HEAD
       {/* Quick Presets Modal */}
       <PresetsModal
         visible={showPresets}
@@ -331,24 +332,14 @@ function ChatScreen() {
         onClose={() => setFullscreenImage(null)}
       />
 
-=======
->>>>>>> parent of d7a5fd2 ()
-=======
->>>>>>> parent of d7a5fd2 ()
       {/* Unified Input Bar with animated keyboard handling */}
       <BottomInputBar
         onSend={handleSendMessage}
         disabled={isProcessing || isSubmitting}
-<<<<<<< HEAD
-<<<<<<< HEAD
         councilModelsCount={councilModels.length}
         chairmanModel={chairmanModel}
         activePresetId={activePresetId}
         onSearchPress={() => setShowPresets(true)}
-=======
->>>>>>> parent of d7a5fd2 ()
-=======
->>>>>>> parent of d7a5fd2 ()
       />
     </View>
   );
