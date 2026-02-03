@@ -10,6 +10,7 @@ import { Bot } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
 import CouncilResponse from "./CouncilResponse";
 import React from "react";
+import { FileChip } from "./FileChip";
 
 interface MessageBubbleProps {
   message: Message;
@@ -30,6 +31,9 @@ function MessageBubble({
   const { width } = useWindowDimensions();
 
   if (message.role === "user") {
+    // Check for attachments (enriched via backend)
+    const attachments = (message as any).attachments || [];
+
     // Determine image source: prioritize imageUrl, then fall back to imageBase64
     let imageUri = message.imageUrl;
     if (!imageUri && message.imageBase64) {
@@ -44,6 +48,19 @@ function MessageBubble({
 
     return (
       <View className="items-end mb-4">
+        {/* Render Attachments */}
+        {attachments.length > 0 && (
+            <View className="mb-2 flex-row flex-wrap justify-end gap-2">
+                {attachments.map((file: any, index: number) => (
+                    <FileChip
+                        key={index}
+                        name={file.fileName}
+                        onRemove={() => {}} // No-op for chat history
+                    />
+                ))}
+            </View>
+        )}
+
         {imageUri && (
           <TouchableOpacity
             onPress={() => onImagePress?.(imageUri!)}

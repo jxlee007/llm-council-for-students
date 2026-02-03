@@ -29,7 +29,21 @@ export const list = query({
       .order("asc")
       .collect();
 
-    return messages;
+    // Enrich messages with attachments
+    const enrichedMessages = await Promise.all(
+      messages.map(async (msg) => {
+        let attachments: any[] = [];
+        if (msg.attachmentIds && msg.attachmentIds.length > 0) {
+          const docs = await Promise.all(
+            msg.attachmentIds.map((id) => ctx.db.get(id))
+          );
+          attachments = docs.filter((doc) => doc !== null);
+        }
+        return { ...msg, attachments };
+      })
+    );
+
+    return enrichedMessages;
   },
 });
 

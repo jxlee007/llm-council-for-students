@@ -64,6 +64,7 @@ export const runCouncil = action({
     args: {
         conversationId: v.id("conversations"),
         content: v.string(),
+        context: v.optional(v.string()), // Additional context (e.g. file content) for LLM but not for display
         attachmentIds: v.optional(v.array(v.id("attachments"))),
         councilMembers: v.optional(v.array(v.string())),
         chairmanModel: v.optional(v.string()),
@@ -134,7 +135,12 @@ export const runCouncil = action({
             console.warn("[Council] No API Key configured, backend may require one");
         }
 
-        const body: Record<string, unknown> = { content: args.content };
+        // Combine context and content for the LLM prompt
+        const llmPrompt = args.context
+            ? `${args.context}\n\n${args.content}`
+            : args.content;
+
+        const body: Record<string, unknown> = { content: llmPrompt };
         if (args.councilMembers && args.councilMembers.length > 0) {
             body.council_members = args.councilMembers;
         }
