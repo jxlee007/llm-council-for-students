@@ -61,8 +61,6 @@ export default function BottomInputBar({
   const [isOnline, setIsOnline] = useState(true);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
 
-  const MAX_CHARS = 2000;
-
   // Total number of attachments
   const totalAttachments = attachments.length + images.length;
 
@@ -116,12 +114,6 @@ export default function BottomInputBar({
 
   const handleSend = () => {
     const trimmed = message.trim();
-    console.log("[BottomInputBar] handleSend called:", {
-      message: trimmed,
-      attachmentsCount: attachments.length,
-      imagesCount: images.length,
-      firstImageBase64Length: images[0]?.base64?.length,
-    });
     if ((trimmed || totalAttachments > 0) && !disabled && isOnline) {
       onSend(
         trimmed,
@@ -217,29 +209,18 @@ export default function BottomInputBar({
         )}
 
         <View className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Text Input with Character Counter */}
-          <View className="relative">
-            {/* Character Counter - Top Right */}
-            <View className="absolute top-2 right-4 z-10">
-              <Text className="text-xs text-muted-foreground">
-                {message.length}/{MAX_CHARS}
-              </Text>
-            </View>
-
-            {/* Text Input */}
-            <TextInput
-              className="text-base text-foreground px-4 pt-4 pb-2 pr-20 min-h-[60px] max-h-32"
-              placeholder={
-                isOnline ? "Ask anything..." : "Offline - Connect to send"
-              }
-              placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              maxLength={MAX_CHARS}
-              editable={!effectivelyDisabled}
-            />
-          </View>
+          {/* Text Input */}
+          <TextInput
+            className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
+            placeholder={
+              isOnline ? "Ask anything..." : "Offline - Connect to send"
+            }
+            placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            editable={!effectivelyDisabled}
+          />
 
           {/* Action Row */}
           <View className="flex-row items-center justify-between px-3 pb-3">

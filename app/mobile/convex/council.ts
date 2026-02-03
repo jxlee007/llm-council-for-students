@@ -39,7 +39,7 @@ interface Stage3Response {
  */
 interface SSEEvent {
     type: string;
-    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string } | Record<string, any>;
+    data?: Stage1Response[] | Stage2Response[] | Stage3Response | { title: string };
     message?: string;
     metadata?: {
         label_to_model?: Record<string, string>;
@@ -64,13 +64,9 @@ export const runCouncil = action({
     args: {
         conversationId: v.id("conversations"),
         content: v.string(),
-        context: v.optional(v.string()), // Additional context (e.g. file content) for LLM but not for display
         attachmentIds: v.optional(v.array(v.id("attachments"))),
         councilMembers: v.optional(v.array(v.string())),
         chairmanModel: v.optional(v.string()),
-        imageBase64: v.optional(v.string()),
-        imageMimeType: v.optional(v.string()),
-        attachmentType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -87,20 +83,10 @@ export const runCouncil = action({
         });
 
         // 1. Create user message
-        const type = args.imageBase64 ? (args.content ? "image_text" : "image") : "text";
-        // Create a data URI for imageUrl if image is present
-        const imageUrl = args.imageBase64
-            ? `data:${args.imageMimeType || "image/jpeg"};base64,${args.imageBase64}`
-            : undefined;
-
-        const userMessageId = await ctx.runMutation(internal.councilMutations.insertUserMessage, {
+        await ctx.runMutation(internal.councilMutations.insertUserMessage, {
             conversationId: args.conversationId,
             content: args.content,
             attachmentIds: args.attachmentIds,
-            imageBase64: args.imageBase64,
-            imageUrl: imageUrl,
-            attachmentType: args.attachmentType,
-            type: type as "text" | "image" | "image_text",
         });
 
         // 2. Create placeholder assistant message (processing)
@@ -137,26 +123,12 @@ export const runCouncil = action({
             console.warn("[Council] No API Key configured, backend may require one");
         }
 
-        // Combine context and content for the LLM prompt
-        const llmPrompt = args.context
-            ? `${args.context}\n\n${args.content}`
-            : args.content;
-
-        const body: Record<string, unknown> = { content: llmPrompt };
+        const body: Record<string, unknown> = { content: args.content };
         if (args.councilMembers && args.councilMembers.length > 0) {
             body.council_members = args.councilMembers;
         }
         if (args.chairmanModel) {
             body.chairman_model = args.chairmanModel;
-        }
-        if (args.imageBase64) {
-            body.image_data = {
-                data: args.imageBase64,
-                mime_type: args.imageMimeType || "image/jpeg",
-            };
-        }
-        if (args.attachmentType) {
-            body.attachment_type = args.attachmentType;
         }
 
         try {
@@ -203,12 +175,7 @@ export const runCouncil = action({
                         try {
                             const event: SSEEvent = JSON.parse(line.slice(6));
 
-                            if (event.type === "vision_complete" && event.data) {
-                                await ctx.runMutation(internal.councilMutations.updateMessageVision, {
-                                    messageId: userMessageId,
-                                    visionContext: JSON.stringify(event.data),
-                                });
-                            } else if (event.type === "stage1_complete" && event.data) {
+                            if (event.type === "stage1_complete" && event.data) {
                                 await ctx.runMutation(internal.councilMutations.updateStage1, {
                                     messageId: assistantMessageId,
                                     stage1: event.data as Stage1Response[],

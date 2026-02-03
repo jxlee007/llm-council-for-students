@@ -12,7 +12,6 @@ import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
 import PresetsModal from "../../components/PresetsModal";
-import { FullscreenImageModal } from "../../components/FullscreenImageModal";
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -35,28 +34,23 @@ function ChatScreen() {
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
-  const {
-    councilModels,
-    chairmanModel,
-    activePresetId,
-    pendingMessage,
-    setPendingMessage,
-  } = useUIStore();
+  const { councilModels, chairmanModel, activePresetId } = useUIStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
   const [lastMessage, setLastMessage] = useState<{
     content: string;
     attachment?: ExtractedFile;
     image?: ExtractedImage;
   } | null>(null);
-  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const hasProcessedInitialMessage = useRef(false);
 
   // Derive processing state from messages
   const processingMessage = messages?.find(
-    (m: any) => m.role === "assistant" && m.processing === true,
+    (m: Message & { processing?: boolean }) =>
+      m.role === "assistant" && m.processing === true,
   );
   const isProcessing = !!processingMessage;
 
@@ -82,29 +76,6 @@ function ChatScreen() {
 
   // Process initial message from Home screen on mount
   useEffect(() => {
-    // Check pendingMessage from store (new mechanism)
-    if (
-      pendingMessage &&
-      conversation &&
-      messages !== undefined &&
-      messages.length === 0 &&
-      !hasProcessedInitialMessage.current
-    ) {
-      hasProcessedInitialMessage.current = true;
-      console.log("[ChatScreen] Processing pending message:", pendingMessage);
-
-      handleSendMessage(
-        pendingMessage.content,
-        pendingMessage.attachments,
-        pendingMessage.images,
-      );
-
-      // Clear the pending message
-      setPendingMessage(null);
-      return;
-    }
-
-    // Fallback: Check query param (legacy/deep link)
     if (
       initialMessage &&
       conversation &&
@@ -119,17 +90,13 @@ function ChatScreen() {
       // Clear the query param to avoid re-processing
       router.setParams({ initialMessage: undefined });
     }
-  }, [initialMessage, conversation, messages, pendingMessage]);
+  }, [initialMessage, conversation, messages]);
 
   const handleSendMessage = async (
     content: string,
-    attachments?: ExtractedFile[],
-    images?: ExtractedImage[],
+    attachment?: ExtractedFile,
+    image?: ExtractedImage,
   ) => {
-    // Extract first item from arrays (BottomInputBar passes arrays)
-    const attachment = attachments?.[0];
-    const image = images?.[0];
-
     if (!id || !conversation || isSubmitting || isProcessing) return;
 
     let attachmentIds: Id<"attachments">[] | undefined;
@@ -155,47 +122,33 @@ function ChatScreen() {
     setError(null);
     setIsSubmitting(true);
 
-    // Context is for the LLM (hidden from user)
-    // Content is for the User (displayed in chat)
-    let context: string | undefined = undefined;
-    let displayContent = content;
-    let attachmentType: "image" | "text_file" | undefined = undefined;
-
+    let prompt = content;
     if (attachment) {
-      context = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}`;
-      attachmentType = "text_file";
-      if (!displayContent) {
-        displayContent = "Please analyze this file.";
-      }
-    } else if (image) {
-      attachmentType = "image";
-      if (!displayContent) {
-        displayContent = "Please analyze this image.";
-      }
+      prompt = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}\n\nUSER QUESTION: ${content || "Please analyze this file."}`;
+    }
+
+    // If image is attached, note it in the prompt (vision processing happens server-side)
+    if (image) {
+      prompt = content || "Please analyze this image.";
     }
 
     try {
-      console.log("[ChatScreen] Sending message:", {
-        hasImage: !!image,
-        hasAttachment: !!attachment,
-        attachmentType,
-        contentLength: displayContent.length,
-      });
-
       const result = await runCouncil({
         conversationId,
-        content: displayContent,
-        context: context,
+        content:
+          prompt ||
+          (attachment
+            ? `[Attached File: ${attachment.name}]`
+            : image
+              ? `[Attached Image: ${image.name}]`
+              : ""),
         attachmentIds,
         councilMembers: councilModels.length > 0 ? councilModels : undefined,
         chairmanModel: chairmanModel || undefined,
         // Pass image info for vision processing
         imageBase64: image?.base64,
         imageMimeType: image?.type,
-        attachmentType,
       });
-
-      console.log("[ChatScreen] runCouncil result:", result);
 
       if (!result.success) {
         setError(result.error || "Council processing failed");
@@ -216,8 +169,8 @@ function ChatScreen() {
       setCanRetry(false);
       handleSendMessage(
         lastMessage.content,
-        lastMessage.attachment ? [lastMessage.attachment] : undefined,
-        lastMessage.image ? [lastMessage.image] : undefined,
+        lastMessage.attachment,
+        lastMessage.image,
       );
     }
   };
@@ -225,10 +178,7 @@ function ChatScreen() {
   const renderMessage = useCallback(
     ({ item, index }: { item: Message; index: number }) => (
       <FadeInView delay={index > 0 ? 0 : 300}>
-        <MessageBubble
-          message={item}
-          onImagePress={(uri: string) => setFullscreenImage(uri)}
-        />
+        <MessageBubble message={item} />
       </FadeInView>
     ),
     [],
@@ -324,12 +274,6 @@ function ChatScreen() {
       <PresetsModal
         visible={showPresets}
         onClose={() => setShowPresets(false)}
-      />
-
-      <FullscreenImageModal
-        visible={!!fullscreenImage}
-        imageUri={fullscreenImage}
-        onClose={() => setFullscreenImage(null)}
       />
 
       {/* Unified Input Bar with animated keyboard handling */}

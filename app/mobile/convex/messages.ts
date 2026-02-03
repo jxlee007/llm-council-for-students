@@ -29,21 +29,7 @@ export const list = query({
       .order("asc")
       .collect();
 
-    // Enrich messages with attachments
-    const enrichedMessages = await Promise.all(
-      messages.map(async (msg) => {
-        let attachments: any[] = [];
-        if (msg.attachmentIds && msg.attachmentIds.length > 0) {
-          const docs = await Promise.all(
-            msg.attachmentIds.map((id) => ctx.db.get(id))
-          );
-          attachments = docs.filter((doc) => doc !== null);
-        }
-        return { ...msg, attachments };
-      })
-    );
-
-    return enrichedMessages;
+    return messages;
   },
 });
 
@@ -53,7 +39,6 @@ export const send = mutation({
     conversationId: v.id("conversations"),
     content: v.string(),
     attachmentIds: v.optional(v.array(v.id("attachments"))),
-    imageBase64: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -80,7 +65,6 @@ export const send = mutation({
       role: "user",
       content: args.content,
       attachmentIds: args.attachmentIds,
-      imageBase64: args.imageBase64,
       createdAt: Date.now(),
     });
 

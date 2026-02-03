@@ -5,7 +5,7 @@ Normalizes all user inputs (text, images, or both) into a single textual prompt
 that can be passed to the council. This ensures the council only ever receives text.
 """
 
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional
 from ..vision.processor import process_image_to_context, VisionContext
 
 
@@ -86,7 +86,7 @@ async def normalize_user_input(
     image_bytes: Optional[bytes] = None,
     mime_type: Optional[str] = None,
     api_key: Optional[str] = None
-) -> Tuple[str, Optional[Dict[str, Any]]]:
+) -> str:
     """
     Normalize user input into a single textual prompt.
     
@@ -97,15 +97,14 @@ async def normalize_user_input(
         api_key: OpenRouter API key
         
     Returns:
-        Tuple of (normalized_prompt, vision_context_dict)
-        vision_context_dict is None if no image was processed.
+        Normalized text prompt ready for council
         
     Raises:
         ValueError: If neither text nor image provided, or if image processing fails
     """
     # Case 1: Text only - return as-is
     if text and not image_bytes:
-        return text, None
+        return text
     
     # Case 2: Image present - process through vision
     if image_bytes:
@@ -120,12 +119,10 @@ async def normalize_user_input(
         )
         
         # Render context as prompt, with user text as caption
-        prompt = await render_context_as_prompt(
+        return await render_context_as_prompt(
             vision_context=vision_context,
             user_caption=text  # May be None
         )
-
-        return prompt, vision_context.to_dict()
     
     # Case 3: Neither text nor image
     raise ValueError("At least one of text or image must be provided")
