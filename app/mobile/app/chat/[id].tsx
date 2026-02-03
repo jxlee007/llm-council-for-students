@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, FlatList, ActivityIndicator } from "react-native";
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { useQuery, useAction, useMutation } from "convex/react";
@@ -11,8 +14,11 @@ import BottomInputBar from "../../components/BottomInputBar";
 import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
+<<<<<<< HEAD
 import PresetsModal from "../../components/PresetsModal";
 import { FullscreenImageModal } from "../../components/FullscreenImageModal";
+=======
+>>>>>>> parent of d7a5fd2 ()
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -40,7 +46,6 @@ function ChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
-  const [showPresets, setShowPresets] = useState(false);
   const [lastMessage, setLastMessage] = useState<{
     content: string;
     attachment?: ExtractedFile;
@@ -309,6 +314,7 @@ function ChatScreen() {
         )}
       </View>
 
+<<<<<<< HEAD
       {/* Quick Presets Modal */}
       <PresetsModal
         visible={showPresets}
@@ -321,14 +327,19 @@ function ChatScreen() {
         onClose={() => setFullscreenImage(null)}
       />
 
+=======
+>>>>>>> parent of d7a5fd2 ()
       {/* Unified Input Bar with animated keyboard handling */}
       <BottomInputBar
         onSend={handleSendMessage}
         disabled={isProcessing || isSubmitting}
+<<<<<<< HEAD
         councilModelsCount={councilModels.length}
         chairmanModel={chairmanModel}
         activePresetId={activePresetId}
         onSearchPress={() => setShowPresets(true)}
+=======
+>>>>>>> parent of d7a5fd2 ()
       />
     </View>
   );
