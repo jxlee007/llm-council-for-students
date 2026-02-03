@@ -70,6 +70,7 @@ class SendMessageRequest(BaseModel):
     council_members: Optional[List[str]] = None
     chairman_model: Optional[str] = None
     image_data: Optional[Dict[str, str]] = None  # {data: base64_str, mime_type: str}
+    attachment_type: Optional[str] = None  # 'image' | 'text_file'
 
 
 # ============================================================================
@@ -270,7 +271,14 @@ async def send_message_stream(
             image_bytes = None
             mime_type = None
 
-            if request.image_data and request.image_data.get("data"):
+            # Strict Vision Guard: Only process image if explicitly marked as 'image' OR (implicit for backward compat) NOT 'text_file'
+            should_process_image = False
+            if request.attachment_type == 'image':
+                should_process_image = True
+            elif request.attachment_type is None and request.image_data:
+                should_process_image = True # Backward compatibility
+
+            if should_process_image and request.image_data and request.image_data.get("data"):
                 try:
                     # Decode base64 data
                     image_bytes = base64.b64decode(request.image_data["data"])

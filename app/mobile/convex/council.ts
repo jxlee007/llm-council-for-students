@@ -70,6 +70,7 @@ export const runCouncil = action({
         chairmanModel: v.optional(v.string()),
         imageBase64: v.optional(v.string()),
         imageMimeType: v.optional(v.string()),
+        attachmentType: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -98,6 +99,7 @@ export const runCouncil = action({
             attachmentIds: args.attachmentIds,
             imageBase64: args.imageBase64,
             imageUrl: imageUrl,
+            attachmentType: args.attachmentType,
             type: type as "text" | "image" | "image_text",
         });
 
@@ -152,6 +154,9 @@ export const runCouncil = action({
                 data: args.imageBase64,
                 mime_type: args.imageMimeType || "image/jpeg",
             };
+        }
+        if (args.attachmentType) {
+            body.attachment_type = args.attachmentType;
         }
 
         try {

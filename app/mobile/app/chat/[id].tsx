@@ -148,20 +148,26 @@ function ChatScreen() {
     // Content is for the User (displayed in chat)
     let context: string | undefined = undefined;
     let displayContent = content;
+    let attachmentType: 'image' | 'text_file' | undefined = undefined;
 
     if (attachment) {
       context = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}`;
+      attachmentType = 'text_file';
       if (!displayContent) {
         displayContent = "Please analyze this file.";
       }
-    } else if (image && !displayContent) {
-       displayContent = "Please analyze this image.";
+    } else if (image) {
+       attachmentType = 'image';
+       if (!displayContent) {
+         displayContent = "Please analyze this image.";
+       }
     }
 
     try {
       console.log("[ChatScreen] Sending message:", {
         hasImage: !!image,
         hasAttachment: !!attachment,
+        attachmentType,
         contentLength: displayContent.length,
       });
 
@@ -175,6 +181,7 @@ function ChatScreen() {
         // Pass image info for vision processing
         imageBase64: image?.base64,
         imageMimeType: image?.type,
+        attachmentType,
       });
 
       console.log("[ChatScreen] runCouncil result:", result);
