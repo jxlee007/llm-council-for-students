@@ -16,12 +16,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const { isSignedIn } = useAuth();
   const createConversation = useMutation(api.conversations.create);
-  const { councilModels, activePresetId, chairmanModel } = useUIStore();
+  const { councilModels, activePresetId, chairmanModel, setPendingMessage } = useUIStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
 
-  const handleSubmit = async (message: string) => {
-    if (!message.trim() || isSubmitting) return;
+  const handleSubmit = async (message: string, attachments?: ExtractedFile[], images?: ExtractedImage[]) => {
+    // Basic validation: must have text OR attachments OR images
+    const hasContent = message.trim().length > 0 || (attachments && attachments.length > 0) || (images && images.length > 0);
+
+    if (!hasContent || isSubmitting) return;
 
     if (!isSignedIn) {
       router.push("/(auth)");
@@ -30,15 +33,24 @@ export default function HomeScreen() {
 
     setIsSubmitting(true);
     try {
+      // Set the pending message in the global store
+      setPendingMessage({
+        content: message,
+        attachments,
+        images
+      });
+
       const conversationId = await createConversation({
         title: "New Chat",
       });
-      // Pass initial message to Chat screen via query params
-      router.push(
-        `/chat/${conversationId}?initialMessage=${encodeURIComponent(message)}`,
-      );
+
+      // Navigate to chat screen
+      // Note: We don't pass initialMessage in query param anymore, ChatScreen will check the store
+      router.push(`/chat/${conversationId}`);
     } catch (error) {
       console.error("Failed to create conversation:", error);
+      // Clear pending message if failed
+      setPendingMessage(null);
     } finally {
       setIsSubmitting(false);
     }
