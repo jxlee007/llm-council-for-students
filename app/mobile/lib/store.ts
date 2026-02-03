@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { PRESETS } from './presets';
+import { ExtractedFile, ExtractedImage } from './files';
 
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 const COUNCIL_MODELS_KEY = '@llm_council_models';
@@ -48,11 +49,19 @@ interface UIState {
   chairmanModel: string | null;
   activePresetId: string | null;
 
+  // Pending message for navigation
+  pendingMessage: {
+    content: string;
+    attachments?: ExtractedFile[];
+    images?: ExtractedImage[];
+  } | null;
+
   // Actions
   loadSettings: () => Promise<void>;
   setCouncilModels: (models: string[], presetId?: string) => void;
   setChairmanModel: (model: string | null, presetId?: string) => void;
   setActivePresetId: (id: string | null) => void;
+  setPendingMessage: (message: { content: string; attachments?: ExtractedFile[]; images?: ExtractedImage[] } | null) => void;
 
   // API Key management
   saveApiKey: (key: string) => Promise<void>;
@@ -79,6 +88,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   councilModels: [],
   chairmanModel: null,
   activePresetId: null,
+  pendingMessage: null,
+
+  setPendingMessage: (message) => set({ pendingMessage: message }),
 
   // Load local settings
   loadSettings: async () => {

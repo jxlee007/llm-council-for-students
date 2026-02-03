@@ -35,7 +35,7 @@ function ChatScreen() {
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
-  const { councilModels, chairmanModel, activePresetId } = useUIStore();
+  const { councilModels, chairmanModel, activePresetId, pendingMessage, setPendingMessage } = useUIStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +77,23 @@ function ChatScreen() {
 
   // Process initial message from Home screen on mount
   useEffect(() => {
+    // Check pendingMessage from store (new mechanism)
+    if (pendingMessage && conversation && messages !== undefined && messages.length === 0 && !hasProcessedInitialMessage.current) {
+      hasProcessedInitialMessage.current = true;
+      console.log("[ChatScreen] Processing pending message:", pendingMessage);
+
+      handleSendMessage(
+        pendingMessage.content,
+        pendingMessage.attachments,
+        pendingMessage.images
+      );
+
+      // Clear the pending message
+      setPendingMessage(null);
+      return;
+    }
+
+    // Fallback: Check query param (legacy/deep link)
     if (
       initialMessage &&
       conversation &&
@@ -91,7 +108,7 @@ function ChatScreen() {
       // Clear the query param to avoid re-processing
       router.setParams({ initialMessage: undefined });
     }
-  }, [initialMessage, conversation, messages]);
+  }, [initialMessage, conversation, messages, pendingMessage]);
 
   const handleSendMessage = async (
     content: string,
