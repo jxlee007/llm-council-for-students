@@ -15,8 +15,11 @@ import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import PresetsModal from "../../components/PresetsModal";
 import { FullscreenImageModal } from "../../components/FullscreenImageModal";
+=======
+>>>>>>> parent of d7a5fd2 ()
 =======
 >>>>>>> parent of d7a5fd2 ()
 import { Id } from "../../convex/_generated/dataModel";
@@ -315,6 +318,7 @@ function ChatScreen() {
       </View>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       {/* Quick Presets Modal */}
       <PresetsModal
         visible={showPresets}
@@ -329,15 +333,20 @@ function ChatScreen() {
 
 =======
 >>>>>>> parent of d7a5fd2 ()
+=======
+>>>>>>> parent of d7a5fd2 ()
       {/* Unified Input Bar with animated keyboard handling */}
       <BottomInputBar
         onSend={handleSendMessage}
         disabled={isProcessing || isSubmitting}
 <<<<<<< HEAD
+<<<<<<< HEAD
         councilModelsCount={councilModels.length}
         chairmanModel={chairmanModel}
         activePresetId={activePresetId}
         onSearchPress={() => setShowPresets(true)}
+=======
+>>>>>>> parent of d7a5fd2 ()
 =======
 >>>>>>> parent of d7a5fd2 ()
       />
