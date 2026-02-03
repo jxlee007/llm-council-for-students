@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
 import asyncio
+import base64
 
 from .input.normalize import normalize_user_input
 
@@ -68,6 +69,7 @@ class SendMessageRequest(BaseModel):
     content: str
     council_members: Optional[List[str]] = None
     chairman_model: Optional[str] = None
+    image_data: Optional[Dict[str, str]] = None  # {data: base64_str, mime_type: str}
 
 
 # ============================================================================
@@ -107,9 +109,15 @@ async def send_message(
         )
     
     try:
+        # Normalize input (text only here, but interface requires tuple unpacking)
+        normalized_prompt, _ = await normalize_user_input(
+            text=request.content,
+            api_key=x_openrouter_key
+        )
+
         # Run the 3-stage council process with user's API key
         stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-            request.content,
+            normalized_prompt,
             council_members=request.council_members,
             chairman_model=request.chairman_model,
             api_key=x_openrouter_key
@@ -177,7 +185,7 @@ async def send_message_with_vision(
             mime_type = image.content_type
         
         # Normalize input (text, image, or both) into council-ready prompt
-        normalized_prompt = await normalize_user_input(
+        normalized_prompt, vision_context = await normalize_user_input(
             text=content,
             image_bytes=image_bytes,
             mime_type=mime_type,
@@ -194,6 +202,8 @@ async def send_message_with_vision(
         
         # Include vision processing info in metadata
         metadata["vision_processed"] = image_bytes is not None
+        if vision_context:
+            metadata["vision_context"] = vision_context
 
         return {
             "stage1": stage1_results,
@@ -255,12 +265,38 @@ async def send_message_stream(
                 yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Council requires at least 1 member.'})}\n\n"
                 return
 
+            # Normalize input (text, image, or both) into council-ready prompt
+            # Check for image data
+            image_bytes = None
+            mime_type = None
+
+            if request.image_data and request.image_data.get("data"):
+                try:
+                    # Decode base64 data
+                    image_bytes = base64.b64decode(request.image_data["data"])
+                    mime_type = request.image_data.get("mime_type", "image/jpeg")
+                except Exception as e:
+                    # Report invalid image data to client
+                    yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Failed to decode image data. Please check the file and try again.'})}\n\n"
+                    return
+
+            normalized_prompt, vision_context = await normalize_user_input(
+                text=request.content,
+                image_bytes=image_bytes,
+                mime_type=mime_type,
+                api_key=api_key
+            )
+
+            # Emit vision context if available
+            if vision_context:
+                yield f"data: {json.dumps({'type': 'vision_complete', 'data': vision_context})}\n\n"
+
             # Start title generation in parallel (don't await yet)
-            title_task = asyncio.create_task(generate_conversation_title(request.content, api_key=api_key))
+            title_task = asyncio.create_task(generate_conversation_title(normalized_prompt, api_key=api_key))
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(request.content, council_members, api_key=api_key)
+            stage1_results = await stage1_collect_responses(normalized_prompt, council_members, api_key=api_key)
 
             # Check quorum after response
             if len(stage1_results) < 1:
@@ -271,14 +307,14 @@ async def send_message_stream(
 
             # Stage 2: Collect rankings
             yield f"data: {json.dumps({'type': 'stage2_start'})}\n\n"
-            stage2_results, label_to_model = await stage2_collect_rankings(request.content, stage1_results, council_members, api_key=api_key)
+            stage2_results, label_to_model = await stage2_collect_rankings(normalized_prompt, stage1_results, council_members, api_key=api_key)
             aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}})}\n\n"
 
             # Stage 3: Synthesize final answer
             yield f"data: {json.dumps({'type': 'stage3_start'})}\n\n"
             stage3_result = await stage3_synthesize_final(
-                request.content,
+                normalized_prompt,
                 stage1_results,
                 stage2_results,
                 chairman_model=request.chairman_model,

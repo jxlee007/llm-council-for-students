@@ -114,8 +114,8 @@ function AppNavigation() {
     }
   }, [isAuthenticated, getOrCreateUser]);
 
-  // Show loading during initial load OR app resume
-  if (isLoading || isResuming) {
+  // Show loading during initial load
+  if (isLoading) {
     return (
       <View
         style={{
@@ -127,7 +127,7 @@ function AppNavigation() {
       >
         <ActivityIndicator size="large" color="#20c997" />
         <Text style={{ color: "#9ca3af", marginTop: 16 }}>
-          {isResuming ? "Restoring session..." : "Connecting to Council..."}
+          Connecting to Council...
         </Text>
       </View>
     );

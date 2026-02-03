@@ -15,12 +15,12 @@ export function FileChip({ name, onRemove }: FileChipProps) {
   return (
     <View className="relative w-20 h-20 rounded-xl overflow-hidden bg-secondary border border-border items-center justify-center">
       {/* File icon */}
-      <FileText size={32} color="#6366f1" strokeWidth={1.5} />
+      <FileText size={24} color="#6366f1" strokeWidth={1.5} />
 
       {/* File name */}
       <Text
-        className="text-[10px] text-muted-foreground mt-1 px-1 text-center"
-        numberOfLines={1}
+        className="text-[10px] text-muted-foreground mt-1 px-1 text-center font-medium"
+        numberOfLines={2}
       >
         {name}
       </Text>

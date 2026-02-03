@@ -14,6 +14,10 @@ export const insertUserMessage = internalMutation({
         conversationId: v.id("conversations"),
         content: v.string(),
         attachmentIds: v.optional(v.array(v.id("attachments"))),
+        imageBase64: v.optional(v.string()),
+        imageUrl: v.optional(v.string()),
+        visionContext: v.optional(v.string()),
+        type: v.optional(v.union(v.literal("text"), v.literal("image"), v.literal("image_text"))),
     },
     handler: async (ctx, args) => {
         const messageId = await ctx.db.insert("messages", {
@@ -21,6 +25,10 @@ export const insertUserMessage = internalMutation({
             role: "user",
             content: args.content,
             attachmentIds: args.attachmentIds,
+            imageBase64: args.imageBase64,
+            imageUrl: args.imageUrl,
+            visionContext: args.visionContext,
+            type: args.type,
             createdAt: Date.now(),
         });
 
@@ -29,6 +37,21 @@ export const insertUserMessage = internalMutation({
         });
 
         return messageId;
+    },
+});
+
+/**
+ * Update message with vision context.
+ */
+export const updateMessageVision = internalMutation({
+    args: {
+        messageId: v.id("messages"),
+        visionContext: v.string(),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.messageId, {
+            visionContext: args.visionContext,
+        });
     },
 });
 
