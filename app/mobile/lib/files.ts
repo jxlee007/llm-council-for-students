@@ -53,6 +53,15 @@ export async function pickAndExtractText(): Promise<ExtractedFile | null> {
       return null;
     }
 
+    // Check mime type (strict guard)
+    const allowedMimeTypes = ["text/", "application/json", "application/javascript"];
+    const isAllowed = allowedMimeTypes.some(type => file.mimeType?.startsWith(type));
+
+    if (!isAllowed) {
+      Alert.alert("Unsupported file", "Only text files (txt, md, json, js, csv) are supported.");
+      return null;
+    }
+
     // Read file content using modern Expo SDK 54 File API
     // Creates a File object and reads as UTF-8 text (follows Web Blob interface)
     const fileHandle = new File(file.uri);

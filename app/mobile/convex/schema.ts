@@ -44,6 +44,7 @@ export default defineSchema({
     imageBase64: v.optional(v.string()), // For storing uploaded image preview
     imageUrl: v.optional(v.string()),
     visionContext: v.optional(v.string()),
+    attachmentType: v.optional(v.string()),
     type: v.optional(v.union(v.literal("text"), v.literal("image"), v.literal("image_text"))),
     stage1: v.optional(
       v.array(
