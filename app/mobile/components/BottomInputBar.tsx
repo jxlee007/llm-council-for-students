@@ -217,10 +217,18 @@ export default function BottomInputBar({
         )}
 
         <View className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Text Input */}
-          <View>
+          {/* Text Input with Character Counter */}
+          <View className="relative">
+            {/* Character Counter - Top Right */}
+            <View className="absolute top-2 right-4 z-10">
+              <Text className="text-xs text-muted-foreground">
+                {message.length}/{MAX_CHARS}
+              </Text>
+            </View>
+
+            {/* Text Input */}
             <TextInput
-              className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
+              className="text-base text-foreground px-4 pt-4 pb-2 pr-20 min-h-[60px] max-h-32"
               placeholder={
                 isOnline ? "Ask anything..." : "Offline - Connect to send"
               }
@@ -231,9 +239,6 @@ export default function BottomInputBar({
               maxLength={MAX_CHARS}
               editable={!effectivelyDisabled}
             />
-            <Text className="text-right text-xs text-muted-foreground px-4 pb-1">
-              {message.length}/{MAX_CHARS}
-            </Text>
           </View>
 
           {/* Action Row */}
