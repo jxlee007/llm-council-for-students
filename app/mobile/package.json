@@ -16,7 +16,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.31.2",
-    "expo": "~54.0.30",
+    "expo": "~54.0.33",
     "expo-auth-session": "~7.0.10",
     "expo-constants": "~18.0.12",
     "expo-dev-client": "~6.0.20",
@@ -27,10 +27,10 @@
     "expo-linear-gradient": "~15.0.8",
     "expo-linking": "~8.0.11",
     "expo-network": "^8.0.8",
-    "expo-router": "~6.0.21",
+    "expo-router": "~6.0.23",
     "expo-secure-store": "~15.0.8",
     "expo-status-bar": "~3.0.9",
-    "expo-updates": "^29.0.15",
+    "expo-updates": "~29.0.16",
     "expo-web-browser": "~15.0.10",
     "lucide-react-native": "^0.562.0",
     "nativewind": "^4.2.1",
@@ -58,5 +58,13 @@
     "typescript": "~5.9.2",
     "vitest": "^4.0.16"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "install": {
+      "exclude": [
+        "react",
+        "react-dom"
+      ]
+    }
+  }
 }
