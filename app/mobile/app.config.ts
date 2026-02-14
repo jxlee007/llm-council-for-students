@@ -62,14 +62,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       "expo-router",
       "expo-secure-store",
       "expo-web-browser",
-      // Sentry Configuration - Disabled for builds until org is configured
-      // [
-      //   "@sentry/react-native/expo",
-      //   {
-      //     organization: process.env.SENTRY_ORG,
-      //     project: process.env.SENTRY_PROJECT
-      //   }
-      // ]
+      // Sentry Configuration
+      [
+        "@sentry/react-native/expo",
+        {
+          url: "https://sentry.io/",
+          organization: "test-4ek",
+          project: "llm-council"
+        }
+      ]
     ],
     experiments: {
       typedRoutes: true

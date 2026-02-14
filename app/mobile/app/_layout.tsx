@@ -27,6 +27,26 @@ import { useUIStore } from "../lib/store";
 import { api } from "../convex/_generated/api";
 import Config, { getConfigErrorMessage } from "../lib/config";
 import { initLogger, sentryWrap, navigationIntegration } from "../lib/logger";
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://09fb75f6abdb2ea9735b82bfe6833b8f@o4510163824345088.ingest.de.sentry.io/4510721046020176',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 // Initialize Convex client (only if URL is valid)
 const convex = Config.convexUrl
@@ -265,4 +285,4 @@ function RootLayout() {
   );
 }
 
-export default sentryWrap(RootLayout);
+export default Sentry.wrap(sentryWrap(RootLayout));
