@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
@@ -35,18 +35,24 @@ function ChatScreen() {
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
 
-  const { councilModels, chairmanModel, activePresetId, pendingMessage, setPendingMessage } = useUIStore();
+  const {
+    councilModels,
+    chairmanModel,
+    activePresetId,
+    pendingMessage,
+    setPendingMessage,
+  } = useUIStore();
 
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [canRetry, setCanRetry] = useState(false);
-  const [showPresets, setShowPresets] = useState(false);
   const [lastMessage, setLastMessage] = useState<{
     content: string;
     attachment?: ExtractedFile;
     image?: ExtractedImage;
   } | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [showPresets, setShowPresets] = useState(false);
   const hasProcessedInitialMessage = useRef(false);
 
   // Derive processing state from messages
@@ -78,14 +84,20 @@ function ChatScreen() {
   // Process initial message from Home screen on mount
   useEffect(() => {
     // Check pendingMessage from store (new mechanism)
-    if (pendingMessage && conversation && messages !== undefined && messages.length === 0 && !hasProcessedInitialMessage.current) {
+    if (
+      pendingMessage &&
+      conversation &&
+      messages !== undefined &&
+      messages.length === 0 &&
+      !hasProcessedInitialMessage.current
+    ) {
       hasProcessedInitialMessage.current = true;
       console.log("[ChatScreen] Processing pending message:", pendingMessage);
 
       handleSendMessage(
         pendingMessage.content,
         pendingMessage.attachments,
-        pendingMessage.images
+        pendingMessage.images,
       );
 
       // Clear the pending message
@@ -148,20 +160,26 @@ function ChatScreen() {
     // Content is for the User (displayed in chat)
     let context: string | undefined = undefined;
     let displayContent = content;
+    let attachmentType: "image" | "text_file" | undefined = undefined;
 
     if (attachment) {
       context = `The user has attached a file "${attachment.name}". \n\nCONTENT OF FILE:\n${attachment.text}`;
+      attachmentType = "text_file";
       if (!displayContent) {
         displayContent = "Please analyze this file.";
       }
-    } else if (image && !displayContent) {
-       displayContent = "Please analyze this image.";
+    } else if (image) {
+      attachmentType = "image";
+      if (!displayContent) {
+        displayContent = "Please analyze this image.";
+      }
     }
 
     try {
       console.log("[ChatScreen] Sending message:", {
         hasImage: !!image,
         hasAttachment: !!attachment,
+        attachmentType,
         contentLength: displayContent.length,
       });
 
@@ -175,6 +193,7 @@ function ChatScreen() {
         // Pass image info for vision processing
         imageBase64: image?.base64,
         imageMimeType: image?.type,
+        attachmentType,
       });
 
       console.log("[ChatScreen] runCouncil result:", result);
