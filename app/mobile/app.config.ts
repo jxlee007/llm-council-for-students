@@ -5,6 +5,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const isPreview = process.env.EXPO_PUBLIC_APP_VARIANT === 'preview';
   const isProd = process.env.EXPO_PUBLIC_APP_VARIANT === 'production';
 
+  const projectId = process.env.EAS_PROJECT_ID || '044eb304-db9b-49c9-9b3f-7d03bb4f0edd';
+
   // App naming based on environment
   const appName = isDev
     ? "LLM Council (Dev)"
@@ -73,13 +75,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       typedRoutes: true
     },
     updates: {
-      url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || "your-project-id"}`,
+      url: `https://u.expo.dev/${projectId}`,
       enabled: isProd || isPreview,
       fallbackToCacheTimeout: 0
     },
     extra: {
       eas: {
-        projectId: process.env.EAS_PROJECT_ID || "your-project-id"
+        projectId: projectId
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       clerkKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
