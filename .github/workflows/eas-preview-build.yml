@@ -1,0 +1,92 @@
+name: EAS Preview Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA to build (defaults to latest on main)"
+        required: false
+        default: ""
+
+jobs:
+  build_android_preview:
+    name: Build Android Preview APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.commit_sha || github.sha }}
+
+      - name: Resolve commit SHA
+        id: sha
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: app/mobile/package-lock.json
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: app/mobile
+
+      - name: Run EAS Cloud Build (Android preview)
+        id: eas_build
+        working-directory: app/mobile
+        run: |
+          BUILD_OUTPUT=$(eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --json \
+            2>/dev/null)
+          echo "build_output=$BUILD_OUTPUT" >> $GITHUB_OUTPUT
+          APK_URL=$(echo "$BUILD_OUTPUT" | python3 -c "
+          import sys, json
+          data = json.load(sys.stdin)
+          builds = data if isinstance(data, list) else [data]
+          url = builds[0].get('artifacts', {}).get('applicationArchiveUrl', '')
+          print(url)
+          ")
+          echo "apk_url=$APK_URL" >> $GITHUB_OUTPUT
+          echo "APK URL: $APK_URL"
+
+      - name: Download APK from EAS
+        run: |
+          curl -L "${{ steps.eas_build.outputs.apk_url }}" -o app-preview.apk
+          ls -lh app-preview.apk
+
+      - name: Create GitHub Pre-Release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: preview-${{ steps.sha.outputs.sha }}
+          name: "Preview Build (${{ steps.sha.outputs.sha }})"
+          prerelease: true
+          body: |
+            🤖 **Automated pre-release build**
+
+            - **Commit:** `${{ steps.sha.outputs.sha }}`
+            - **Profile:** `preview`
+            - **Platform:** Android
+
+            > ⚠️ This is a pre-release build for testing only. Not for production use.
+          files: app-preview.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print download link
+        run: |
+          echo ""
+          echo "✅ Pre-release created!"
+          echo "📥 Direct APK download:"
+          echo "https://github.com/${{ github.repository }}/releases/download/preview-${{ steps.sha.outputs.sha }}/app-preview.apk"
