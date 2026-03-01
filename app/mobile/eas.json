@@ -15,7 +15,8 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_APP_VARIANT": "preview"
+        "EXPO_PUBLIC_APP_VARIANT": "preview",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "autoIncrement": true,
       "channel": "preview",
