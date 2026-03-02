@@ -69,6 +69,7 @@ export default defineSchema({
       })
     ),
     processing: v.optional(v.boolean()),
+    currentStage: v.optional(v.string()), // "vision" | "stage1" | "stage2" | "stage3"
     error: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_conversation", ["conversationId"]),

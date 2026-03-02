@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Network from "expo-network";
 import {
-  pickAndExtractText,
+  pickAndExtractDocument,
   pickImage,
   ExtractedFile,
   ExtractedImage,
@@ -146,7 +146,7 @@ export default function BottomInputBar({
       return;
     }
 
-    const file = await pickAndExtractText();
+    const file = await pickAndExtractDocument();
     if (file) {
       setAttachments([...attachments, file]);
     }
@@ -162,6 +162,21 @@ export default function BottomInputBar({
     }
 
     const picked = await pickImage("gallery");
+    if (picked) {
+      setImages([...images, picked]);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    if (totalAttachments >= MAX_ATTACHMENTS) {
+      Alert.alert(
+        "Attachment Limit",
+        `You can attach up to ${MAX_ATTACHMENTS} files or images.`,
+      );
+      return;
+    }
+
+    const picked = await pickImage("camera");
     if (picked) {
       setImages([...images, picked]);
     }
@@ -302,6 +317,7 @@ export default function BottomInputBar({
         visible={showAttachmentModal}
         onClose={() => setShowAttachmentModal(false)}
         onSelectImage={handleImagePick}
+        onSelectCamera={handleCameraCapture}
         onSelectFile={handleFilePick}
       />
     </Animated.View>

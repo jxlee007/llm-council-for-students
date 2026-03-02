@@ -62,9 +62,11 @@ function ChatScreen() {
   const isProcessing = !!processingMessage;
 
   // Derive current stage from the processing message
-  const getCurrentStage = (): 0 | 1 | 2 | 3 => {
+  const getCurrentStage = (): 0 | 1 | 2 | 3 | "vision" => {
     if (!processingMessage) return 0;
     const msg = processingMessage as any;
+    // Check vision stage first (before council stages)
+    if (msg.currentStage === "vision") return "vision";
     if (msg.stage3) return 3;
     if (msg.stage2?.length > 0) return 2;
     if (msg.stage1?.length > 0) return 1;
@@ -312,6 +314,8 @@ function ChatScreen() {
             <View className="flex-row items-center">
               <ActivityIndicator size="small" color="#20c997" />
               <Text className="ml-2 text-primary text-sm font-medium">
+                {currentStage === "vision" &&
+                  "👁 Analyzing image with vision model…"}
                 {currentStage === 1 && "Stage 1: Collecting responses..."}
                 {currentStage === 2 && "Stage 2: Council is deliberating..."}
                 {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}

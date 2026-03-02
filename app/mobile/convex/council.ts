@@ -198,7 +198,12 @@ export const runCouncil = action({
                         try {
                             const event: SSEEvent = JSON.parse(line.slice(6));
 
-                            if (event.type === "vision_complete" && event.data) {
+                            if (event.type === "vision_processing") {
+                                // Vision model is running — update UI immediately
+                                await ctx.runMutation(internal.councilMutations.setVisionProcessing, {
+                                    messageId: assistantMessageId,
+                                });
+                            } else if (event.type === "vision_complete" && event.data) {
                                 await ctx.runMutation(internal.councilMutations.updateMessageVision, {
                                     messageId: userMessageId,
                                     visionContext: JSON.stringify(event.data),

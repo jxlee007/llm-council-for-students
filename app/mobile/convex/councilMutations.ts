@@ -76,6 +76,21 @@ export const insertAssistantPlaceholder = internalMutation({
 });
 
 /**
+ * Mark assistant placeholder as currently in vision processing stage.
+ * Used to show "Analyzing image…" in the mobile UI.
+ */
+export const setVisionProcessing = internalMutation({
+    args: {
+        messageId: v.id("messages"),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.messageId, {
+            currentStage: "vision",
+        });
+    },
+});
+
+/**
  * Update assistant message with Stage 1 results.
  */
 export const updateStage1 = internalMutation({

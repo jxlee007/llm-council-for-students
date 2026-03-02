@@ -12,23 +12,26 @@ import Animated, {
   withTiming,
   Easing,
 } from "react-native-reanimated";
-import { Image, FileText } from "lucide-react-native";
+import { Camera, Image, FileText } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface AttachmentModalProps {
   visible: boolean;
   onClose: () => void;
   onSelectImage: () => void;
+  onSelectCamera: () => void;
   onSelectFile: () => void;
 }
 
 /**
- * Bottom sheet modal for selecting attachment type (image or file).
+ * Bottom sheet modal for selecting attachment type.
+ * Options: Camera, Image (gallery), Text File (txt/csv/json/md/pdf/docx)
  */
 export function AttachmentModal({
   visible,
   onClose,
   onSelectImage,
+  onSelectCamera,
   onSelectFile,
 }: AttachmentModalProps) {
   const insets = useSafeAreaInsets();
@@ -92,28 +95,45 @@ export function AttachmentModal({
             </Text>
           </View>
 
-          {/* Options */}
+          {/* Options — 3 columns */}
           <View className="px-6 pb-6 flex-row gap-3">
-            {/* Image Option */}
+            {/* Camera Option */}
+            <TouchableOpacity
+              onPress={() => {
+                onSelectCamera();
+                onClose();
+              }}
+              activeOpacity={0.7}
+              className="flex-1 items-center p-4 bg-secondary/50 border border-border rounded-2xl"
+            >
+              <View className="w-14 h-14 rounded-2xl bg-sky-500/20 items-center justify-center mb-3">
+                <Camera size={28} color="#0ea5e9" />
+              </View>
+              <Text className="text-sm font-semibold text-foreground mb-1">
+                Camera
+              </Text>
+              <Text className="text-xs text-muted-foreground text-center">
+                Take a photo
+              </Text>
+            </TouchableOpacity>
+
+            {/* Image Gallery Option */}
             <TouchableOpacity
               onPress={() => {
                 onSelectImage();
                 onClose();
               }}
               activeOpacity={0.7}
-              className="flex-1 items-center p-6 bg-secondary/50 border border-border rounded-2xl"
+              className="flex-1 items-center p-4 bg-secondary/50 border border-border rounded-2xl"
             >
-              <View className="w-16 h-16 rounded-2xl bg-emerald-500/20 items-center justify-center mb-3">
-                <Image size={32} color="#10b981" />
+              <View className="w-14 h-14 rounded-2xl bg-emerald-500/20 items-center justify-center mb-3">
+                <Image size={28} color="#10b981" />
               </View>
-              <Text className="text-base font-semibold text-foreground mb-1">
-                Image
+              <Text className="text-sm font-semibold text-foreground mb-1">
+                Gallery
               </Text>
               <Text className="text-xs text-muted-foreground text-center">
                 JPG, PNG, WebP
-              </Text>
-              <Text className="text-xs text-muted-foreground text-center">
-                Max 10MB
               </Text>
             </TouchableOpacity>
 
@@ -124,19 +144,16 @@ export function AttachmentModal({
                 onClose();
               }}
               activeOpacity={0.7}
-              className="flex-1 items-center p-6 bg-secondary/50 border border-border rounded-2xl"
+              className="flex-1 items-center p-4 bg-secondary/50 border border-border rounded-2xl"
             >
-              <View className="w-16 h-16 rounded-2xl bg-indigo-500/20 items-center justify-center mb-3">
-                <FileText size={32} color="#6366f1" />
+              <View className="w-14 h-14 rounded-2xl bg-indigo-500/20 items-center justify-center mb-3">
+                <FileText size={28} color="#6366f1" />
               </View>
-              <Text className="text-base font-semibold text-foreground mb-1">
-                Text File
+              <Text className="text-sm font-semibold text-foreground mb-1">
+                File
               </Text>
               <Text className="text-xs text-muted-foreground text-center">
-                TXT, MD, CSV, JSON
-              </Text>
-              <Text className="text-xs text-muted-foreground text-center">
-                Max 5MB
+                TXT, CSV, MD{"\n"}PDF, DOCX
               </Text>
             </TouchableOpacity>
           </View>

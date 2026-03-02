@@ -12,6 +12,7 @@ from typing import List, Dict, Any, Optional
 import json
 import asyncio
 import base64
+import io
 
 from .input.normalize import normalize_user_input
 
@@ -275,6 +276,8 @@ async def send_message_stream(
                     # Decode base64 data
                     image_bytes = base64.b64decode(request.image_data["data"])
                     mime_type = request.image_data.get("mime_type", "image/jpeg")
+                    # Let client know vision processing is starting (can take 5-20s)
+                    yield f"data: {json.dumps({'type': 'vision_processing'})}\n\n"
                 except Exception as e:
                     # Report invalid image data to client
                     yield f"data: {json.dumps({'type': 'error', 'error_code': ErrorCode.INVALID_REQUEST, 'message': 'Failed to decode image data. Please check the file and try again.'})}\n\n"
@@ -356,6 +359,92 @@ async def send_message_stream(
             "Connection": "keep-alive",
         }
     )
+
+
+# ============================================================================
+# File Text Extraction Endpoint
+# ============================================================================
+
+MAX_EXTRACT_CHARS = 50000  # Match mobile client limit
+MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB server-side limit
+
+
+@app.post("/api/files/extract")
+async def extract_file_text(
+    file: UploadFile = File(...),
+    x_openrouter_key: Optional[str] = Header(None, alias="X-OpenRouter-Key")
+):
+    """
+    Extract plain text from an uploaded file.
+    Supports: .txt, .md, .csv, .json, .docx, .pdf
+    Returns extracted text (truncated to MAX_EXTRACT_CHARS).
+    """
+    filename = file.filename or ""
+    content_type = file.content_type or ""
+
+    file_bytes = await file.read()
+
+    if len(file_bytes) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(status_code=413, detail="File too large. Maximum size is 10MB.")
+
+    extracted_text = ""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    try:
+        # --- Plain text formats ---
+        if ext in ("txt", "md", "csv", "json", "js", "ts", "py", "html", "xml") or content_type.startswith("text/"):
+            extracted_text = file_bytes.decode("utf-8", errors="replace")
+
+        # --- DOCX ---
+        elif ext in ("docx",) or content_type in (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ):
+            try:
+                import docx
+                doc = docx.Document(io.BytesIO(file_bytes))
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                extracted_text = "\n".join(paragraphs)
+            except ImportError:
+                raise HTTPException(status_code=501, detail="DOCX extraction not available on this server.")
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=f"Failed to parse DOCX: {str(e)}")
+
+        # --- PDF ---
+        elif ext == "pdf" or content_type == "application/pdf":
+            try:
+                from pdfminer.high_level import extract_text as pdf_extract_text
+                extracted_text = pdf_extract_text(io.BytesIO(file_bytes))
+            except ImportError:
+                raise HTTPException(status_code=501, detail="PDF extraction not available on this server.")
+            except Exception as e:
+                raise HTTPException(status_code=422, detail=f"Failed to parse PDF: {str(e)}")
+
+        else:
+            # Attempt UTF-8 decode as last resort
+            try:
+                extracted_text = file_bytes.decode("utf-8", errors="replace")
+            except Exception:
+                raise HTTPException(
+                    status_code=415,
+                    detail=f"Unsupported file type: .{ext}. Supported: txt, md, csv, json, docx, pdf."
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
+
+    # Truncate to limit
+    is_truncated = len(extracted_text) > MAX_EXTRACT_CHARS
+    if is_truncated:
+        extracted_text = extracted_text[:MAX_EXTRACT_CHARS]
+
+    return {
+        "filename": filename,
+        "text": extracted_text,
+        "char_count": len(extracted_text),
+        "truncated": is_truncated,
+    }
 
 
 if __name__ == "__main__":
