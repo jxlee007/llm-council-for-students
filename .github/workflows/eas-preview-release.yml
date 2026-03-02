@@ -11,7 +11,6 @@ on:
 jobs:
   preview_build_and_release:
     runs-on: ubuntu-latest
-    environment: github-pages  # Required to access EXPO_TOKEN (scoped to this environment)
 
     steps:
       - name: Checkout Specific Commit
