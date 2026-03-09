@@ -97,7 +97,8 @@ export function AttachmentModal({
 
           {/* Options — 3 columns */}
           <View className="px-6 pb-6 flex-row gap-3">
-            {/* Camera Option */}
+            {/* --- Image Support Temporarily Concealed --- 
+            {/* Camera Option *\/}
             <TouchableOpacity
               onPress={() => {
                 onSelectCamera();
@@ -117,7 +118,7 @@ export function AttachmentModal({
               </Text>
             </TouchableOpacity>
 
-            {/* Image Gallery Option */}
+            {/* Image Gallery Option *\/}
             <TouchableOpacity
               onPress={() => {
                 onSelectImage();
@@ -136,6 +137,7 @@ export function AttachmentModal({
                 JPG, PNG, WebP
               </Text>
             </TouchableOpacity>
+            ------------------------------------------ */}
 
             {/* File Option */}
             <TouchableOpacity
