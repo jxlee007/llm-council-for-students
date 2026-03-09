@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -36,6 +36,9 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
 
+  const [expandedPreset, setExpandedPreset] = useState<string | null>(null);
+  const [lastTap, setLastTap] = useState<{ key: string; time: number } | null>(null);
+
   useEffect(() => {
     if (visible) {
       translateY.value = withTiming(0, {
@@ -49,6 +52,8 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
         easing: Easing.in(Easing.cubic),
       });
       opacity.value = withTiming(0, { duration: 200 });
+      // reset expansion state on close
+      setTimeout(() => setExpandedPreset(null), 300);
     }
   }, [visible]);
 
@@ -62,14 +67,30 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
 
   const handleSelectPreset = (key: string) => {
     const preset = PRESETS[key];
-    // Set models first (store will auto-detect and set activePresetId)
     setCouncilModels(preset.members, key);
     setChairmanModel(preset.chairman, key);
+  };
+
+  const handlePress = (key: string) => {
+    const now = Date.now();
+    if (lastTap && lastTap.key === key && now - lastTap.time < 300) {
+      // Double tap
+      setExpandedPreset(expandedPreset === key ? null : key);
+      setLastTap(null); // Reset tap to prevent triple tap from toggling again
+    } else {
+      // Single tap
+      handleSelectPreset(key);
+      setLastTap({ key, time: now });
+    }
   };
 
   // Helper to check if a preset is active
   const isPresetActive = (key: string) => {
     return activePresetId === key;
+  };
+
+  const formatModelName = (modelId: string) => {
+    return modelId.split('/').pop()?.replace(':free', '') || modelId;
   };
 
   if (!visible && opacity.value === 0) return null;
@@ -101,7 +122,7 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
             Select a Council Preset
           </Text>
           <Text className="text-muted-foreground text-sm mt-1">
-            Build your team instantly for specific tasks.
+            Single tap to select. Double tap to view models.
           </Text>
         </View>
 
@@ -111,46 +132,71 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
           {Object.entries(PRESETS).map(([key, preset], index) => {
             const Icon = PRESET_ICONS[key as keyof typeof PRESET_ICONS];
             const isActive = isPresetActive(key);
+            const isExpanded = expandedPreset === key;
 
             return (
               <TouchableOpacity
                 key={key}
-                onPress={() => handleSelectPreset(key)}
+                onPress={() => handlePress(key)}
                 activeOpacity={0.7}
-                className={`flex-row items-center p-4 mb-3 rounded-2xl border ${
+                className={`p-4 mb-3 rounded-2xl border ${
                   isActive
                     ? "bg-primary/10 border-primary"
                     : "bg-muted/30 border-border"
                 }`}
               >
-                <View
-                  className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
-                    isActive
-                      ? "bg-primary/20"
-                      : "bg-muted/50 border border-border"
-                  }`}
-                >
-                  {Icon && (
-                    <Icon size={24} color={isActive ? "#6366f1" : "#94a3b8"} />
+                <View className="flex-row items-center">
+                  <View
+                    className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
+                      isActive
+                        ? "bg-primary/20"
+                        : "bg-muted/50 border border-border"
+                    }`}
+                  >
+                    {Icon && (
+                      <Icon size={24} color={isActive ? "#6366f1" : "#94a3b8"} />
+                    )}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text
+                      className={`font-semibold text-base ${
+                        isActive ? "text-primary" : "text-foreground"
+                      }`}
+                    >
+                      {preset.label}
+                    </Text>
+                    <Text className="text-muted-foreground text-xs mt-0.5">
+                      {preset.description}
+                    </Text>
+                  </View>
+
+                  {isActive && (
+                    <View className="bg-primary rounded-full p-1 ml-2">
+                      <Check size={14} color="white" strokeWidth={3} />
+                    </View>
                   )}
                 </View>
 
-                <View className="flex-1">
-                  <Text
-                    className={`font-semibold text-base ${
-                      isActive ? "text-primary" : "text-foreground"
-                    }`}
-                  >
-                    {preset.label}
-                  </Text>
-                  <Text className="text-muted-foreground text-xs mt-0.5">
-                    {preset.description}
-                  </Text>
-                </View>
-
-                {isActive && (
-                  <View className="bg-primary rounded-full p-1 ml-2">
-                    <Check size={14} color="white" strokeWidth={3} />
+                {/* Expanded Models List */}
+                {isExpanded && (
+                  <View className="mt-4 pt-3 border-t border-border/50">
+                    <Text className="text-xs font-semibold text-muted-foreground mb-3">
+                      COUNCIL MEMBERS
+                    </Text>
+                    {preset.members.map((modelId, idx) => (
+                      <View key={idx} className="flex-row items-center mb-2 ml-1">
+                        <View className="w-1.5 h-1.5 rounded-full bg-primary/50 mr-3" />
+                        <Text className="text-sm text-foreground/80 flex-1">
+                          {formatModelName(modelId)}
+                        </Text>
+                        {preset.chairman === modelId && (
+                          <Text className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded ml-2 overflow-hidden">
+                            CHAIRMAN
+                          </Text>
+                        )}
+                      </View>
+                    ))}
                   </View>
                 )}
               </TouchableOpacity>
@@ -161,3 +207,4 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
     </View>
   );
 }
+

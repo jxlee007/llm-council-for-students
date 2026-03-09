@@ -285,7 +285,9 @@ function ConfigureScreen() {
                             (p) =>
                               p !== "Free" &&
                               p !== "Unknown" &&
-                              !p.endsWith("Context"),
+                              !p.endsWith("Context") &&
+                              !p.includes("Image") &&
+                              !p.includes("Video")
                           )
                           .map((pill, i) => (
                             <View
