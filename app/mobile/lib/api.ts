@@ -12,11 +12,13 @@ import type {
 import * as Network from 'expo-network';
 import { Config } from './config';
 
+import pRetry from 'p-retry';
+
 // Backend URL - uses env var for production, fallback to localhost
 const API_BASE_URL = Config.apiUrl;
 
 /**
- * Generic fetch wrapper with error handling.
+ * Generic fetch wrapper with error handling and retry logic.
  */
 async function fetchApi<T>(
     endpoint: string,
@@ -24,40 +26,64 @@ async function fetchApi<T>(
 ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
-    // Check network connectivity
-    const networkState = await Network.getNetworkStateAsync();
-    if (networkState.isConnected === false) {
-        throw new Error('No Internet Connection');
-    }
-
-    // Add 60s timeout
-    const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 60000);
-
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers,
-            },
-            signal: controller.signal,
-            ...options,
-        });
-
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API Error: ${response.status} - ${error}`);
+    const runFetch = async () => {
+        // Check network connectivity
+        const networkState = await Network.getNetworkStateAsync();
+        if (networkState.isConnected === false) {
+            // p-retry doesn't retry on AbortError by default, but we'll throw a regular error for no connection
+            const error = new Error('No Internet Connection');
+            (error as any).noRetry = true; // Mark as non-retryable
+            throw error;
         }
 
-        return response.json();
-    } catch (error: any) {
-        if (error.name === 'AbortError') {
-            throw new Error('Request timed out');
+        // Add 30s timeout per attempt
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 30000);
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+                signal: controller.signal,
+                ...options,
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                const error: any = new Error(`API Error: ${response.status} - ${errorText}`);
+                error.status = response.status;
+                
+                // Only retry on 429 (Rate Limit) or 5xx (Server Error)
+                if (response.status !== 429 && (response.status < 500 || response.status > 599)) {
+                    error.noRetry = true;
+                }
+                throw error;
+            }
+
+            return await response.json();
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                throw new Error('Request timed out');
+            }
+            throw error;
+        } finally {
+            clearTimeout(id);
         }
-        throw error;
-    } finally {
-        clearTimeout(id);
-    }
+    };
+
+    return pRetry(runFetch, {
+        retries: 3,
+        minTimeout: 1000,
+        maxTimeout: 5000,
+        onFailedAttempt: (error) => {
+            if ((error as any).noRetry) {
+                throw error; // Bail out if not retryable
+            }
+            console.warn(`[API] Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`);
+        },
+    });
 }
 
 /**

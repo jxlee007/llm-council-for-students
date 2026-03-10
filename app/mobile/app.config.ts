@@ -24,7 +24,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
     scheme: "llm-council",
-    newArchEnabled: true,
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
@@ -68,7 +67,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           url: "https://sentry.io/",
           organization: "test-4ek",
-          project: "llm-council"
+          project: "llm-council",
+          uploadSourceMaps: false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          android: {
+            kotlinVersion: "2.1.20",
+            gradleVersion: "8.11.1"
+          }
         }
       ]
     ],

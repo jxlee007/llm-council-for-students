@@ -99,6 +99,7 @@ export const updateStage1 = internalMutation({
         stage1: v.array(
             v.object({
                 model: v.string(),
+                original_model: v.optional(v.union(v.string(), v.null())),
                 response: v.string(),
             })
         ),
@@ -119,6 +120,7 @@ export const updateStage2 = internalMutation({
         stage2: v.array(
             v.object({
                 model: v.string(),
+                original_model: v.optional(v.union(v.string(), v.null())),
                 ranking: v.string(),
                 parsed_ranking: v.array(v.string()),
             })
@@ -139,6 +141,7 @@ export const updateStage3 = internalMutation({
         messageId: v.id("messages"),
         stage3: v.object({
             model: v.string(),
+            original_model: v.optional(v.union(v.string(), v.null())),
             response: v.string(),
         }),
         content: v.string(),

@@ -65,19 +65,19 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
                   }
                 : undefined
             }
-            className={`px-6 py-3 rounded-2xl mr-2 min-w-[120px] ${
+            className={`px-4 py-3 rounded-2xl mr-2 min-w-[80px] max-w-[120px] ${
               index === activeIndex
                 ? "bg-primary"
                 : "bg-secondary/50 hover:bg-secondary"
             }`}
           >
             <Text
-              className={`text-sm font-semibold text-center ${
+              className={`text-xs font-semibold text-center ${
                 index === activeIndex
                   ? "text-primary-foreground"
                   : "text-muted-foreground"
               }`}
-              numberOfLines={1}
+              numberOfLines={2}
             >
               {getModelShortName(response.model)}
             </Text>
@@ -164,13 +164,18 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
 
       {/* Model indicator */}
       <View className="mt-4 px-2 flex-row items-center justify-between">
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row items-center gap-2 flex-wrap">
           <Text className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-1 rounded-md">
             {getModelShortName(activeResponse.model)}
           </Text>
-          <Text className="text-xs text-muted-foreground">
+          <Text className="text-xs text-muted-foreground mr-2">
             {activeResponse.model}
           </Text>
+          {activeResponse.original_model && (
+            <Text className="text-xs font-medium text-amber-500">
+              fallback - {getModelShortName(activeResponse.original_model)} (which was not available)
+            </Text>
+          )}
         </View>
         <Text className="text-xs font-medium text-muted-foreground">
           {activeIndex + 1} / {responses.length}

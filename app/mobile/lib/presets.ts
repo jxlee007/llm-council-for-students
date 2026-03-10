@@ -5,6 +5,7 @@ import {
     Feather,
     Scale,
 } from "lucide-react-native";
+import { Model } from "./types";
 
 export const PRESET_ICONS = {
     academic: GraduationCap,
@@ -14,67 +15,74 @@ export const PRESET_ICONS = {
     legal: Scale,
 };
 
-export interface Preset {
+export interface PresetDefinition {
     label: string;
     description: string;
-    chairman: string;
-    members: string[];
+    system_prompt: string;
+    // Keywords to look for in model name/id/description.
+    keywords: string[];
 }
 
-export const PRESETS: Record<string, Preset> = {
+export const PRESETS: Record<string, PresetDefinition> = {
     academic: {
         label: "Academic",
         description: "Highest context for long papers",
-        chairman: "xiaomi/mimo-v2-flash:free",
-        members: [
-            "deepseek/deepseek-r1-0528:free",
-            "xiaomi/mimo-v2-flash:free",
-            "mistralai/devstral-2512:free",
-            "openai/gpt-oss-120b:free",
-        ],
+        system_prompt: "You are an elite academic council. Analyze the prompt with rigorous logic, relying on empirical data, peer-reviewed standards, and deep reasoning. Focus on clarity, citations (if applicable), and avoiding logical fallacies.",
+        keywords: ["r1", "think", "claude", "pro", "flash"],
     },
     finance: {
         label: "Finance",
         description: "Deep analysis & reporting",
-        chairman: "xiaomi/mimo-v2-flash:free",
-        members: [
-            "google/gemma-3-27b-it:free",
-            "tngtech/deepseek-r1t-chimera:free",
-            "qwen/qwen3-coder:free",
-            "arcee-ai/trinity-mini:free",
-        ],
+        system_prompt: "You are a council of senior financial analysts. Provide quantitative, objective, and risk-adjusted analysis. Focus on market conditions, financial metrics, and strategic business implications.",
+        keywords: ["finance", "r1", "qwen", "llama", "analyze"],
     },
     programming: {
         label: "Coding",
         description: "Code generation & review",
-        chairman: "qwen/qwen3-coder:free",
-        members: [
-            "qwen/qwen3-coder:free",
-            "kwaipilot/kat-coder-pro:free",
-            "mistralai/devstral-2512:free",
-            "nvidia/nemotron-3-nano-30b-a3b:free",
-        ],
+        system_prompt: "You are a council of expert software engineers. Provide clean, efficient, and well-documented code. Focus on best practices, security, and performance. Explain your technical decisions clearly.",
+        keywords: ["coder", "code", "dev", "instruct", "qwen"],
     },
     writer: {
         label: "Writer",
         description: "Creative writing & roleplay",
-        chairman: "tng/deepseek-r1t2-chimera:free",
-        members: [
-            "tng/deepseek-r1t2-chimera:free",
-            "nousresearch/hermes-3-llama-3.1-405b:free",
-            "google/gemma-3-12b-it:free",
-            "mistralai/mistral-small-24b-instruct-2501:free",
-        ],
+        system_prompt: "You are a council of creative writers and storytellers. Focus on narrative flow, character development, evocative language, and thematic depth. Be creative, engaging, and expressive.",
+        keywords: ["hermes", "writer", "story", "creative", "mistral", "gemma"],
     },
     legal: {
         label: "Legal",
         description: "Document analysis",
-        chairman: "mistralai/devstral-2512:free",
-        members: [
-            "google/gemma-3n-e4b-it:free",
-            "xiaomi/mimo-v2-flash:free",
-            "mistralai/devstral-2512:free",
-            "z-ai/glm-4.5-air:free",
-        ],
+        system_prompt: "You are a council of expert legal professionals. Analyze the text for liabilities, compliance, contractual obligations, and legal risks. Be precise, objective, and highlight potential loopholes or ambiguities.",
+        keywords: ["legal", "devstral", "flash", "law", "glm"],
     },
 };
+
+/**
+ * Randomly shuffles an array.
+ */
+function shuffle<T>(array: T[]): T[] {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+}
+
+export function generateDynamicPreset(presetId: string, availableModels: Model[]): { chairman: string; members: string[]; system_prompt: string } | null {
+    const preset = PRESETS[presetId];
+    if (!preset || availableModels.length === 0) return null;
+
+    // Just take the first 5 models regardless of the preset
+    const selectedModels = availableModels.slice(0, Math.min(5, availableModels.length));
+    
+    if (selectedModels.length === 0) return null;
+
+    const chairman = selectedModels[0].id;
+    const members = selectedModels.map(m => m.id);
+
+    return {
+        chairman,
+        members,
+        system_prompt: preset.system_prompt
+    };
+}

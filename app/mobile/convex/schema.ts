@@ -21,6 +21,7 @@ export default defineSchema({
     isPro: v.boolean(),
     subscriptionTier: v.optional(v.string()),
     openRouterApiKey: v.optional(v.string()),
+    geminiApiKey: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_clerkId", ["clerkId"]),
 
@@ -49,6 +50,7 @@ export default defineSchema({
       v.array(
         v.object({
           model: v.string(),
+          original_model: v.optional(v.union(v.string(), v.null())),
           response: v.string(),
         })
       )
@@ -57,6 +59,7 @@ export default defineSchema({
       v.array(
         v.object({
           model: v.string(),
+          original_model: v.optional(v.union(v.string(), v.null())),
           ranking: v.string(),
           parsed_ranking: v.array(v.string()),
         })
@@ -65,6 +68,7 @@ export default defineSchema({
     stage3: v.optional(
       v.object({
         model: v.string(),
+        original_model: v.optional(v.union(v.string(), v.null())),
         response: v.string(),
       })
     ),

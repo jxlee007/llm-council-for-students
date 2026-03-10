@@ -1,14 +1,16 @@
 """3-stage LLM Council orchestration."""
 
 from typing import List, Dict, Any, Tuple, Optional
-from .openrouter import query_models_parallel, query_model
+from .openrouter import query_models_parallel_with_fallbacks, query_model_with_fallback
 from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
 async def stage1_collect_responses(
     user_query: str,
     council_members: List[str],
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None
 ) -> List[Dict[str, Any]]:
     """
     Stage 1: Collect individual responses from all council models.
@@ -21,18 +23,24 @@ async def stage1_collect_responses(
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    history = history or []
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.extend(history)
+    messages.append({"role": "user", "content": user_query})
 
-    # Query all models in parallel
-    responses = await query_models_parallel(council_members, messages, api_key=api_key)
+    # Query all models in parallel with fallbacks
+    responses = await query_models_parallel_with_fallbacks(council_members, messages, api_key=api_key)
 
     # Format results
     stage1_results = []
-    for model, response in responses.items():
-        if response is not None:  # Only include successful responses
+    for requested_model, data in responses.items():
+        if data["message"] is not None:  # Only include successful responses
             stage1_results.append({
-                "model": model,
-                "response": response.get('content', '')
+                "model": data["model_used"],
+                "original_model": requested_model if data["model_used"] != requested_model else None,
+                "response": data["message"].get('content', '')
             })
 
     return stage1_results
@@ -104,18 +112,19 @@ Now provide your evaluation and ranking:"""
 
     messages = [{"role": "user", "content": ranking_prompt}]
 
-    # Get rankings from all council models in parallel
+    # Get rankings from all council models in parallel with fallbacks
     # We query the same council members who participated (or were requested) to verify each other
-    responses = await query_models_parallel(council_members, messages, api_key=api_key)
+    responses = await query_models_parallel_with_fallbacks(council_members, messages, api_key=api_key)
 
     # Format results
     stage2_results = []
-    for model, response in responses.items():
-        if response is not None:
-            full_text = response.get('content', '')
+    for requested_model, data in responses.items():
+        if data["message"] is not None:
+            full_text = data["message"].get('content', '')
             parsed = parse_ranking_from_text(full_text)
             stage2_results.append({
-                "model": model,
+                "model": data["model_used"],
+                "original_model": requested_model if data["model_used"] != requested_model else None,
                 "ranking": full_text,
                 "parsed_ranking": parsed
             })
@@ -128,7 +137,9 @@ async def stage3_synthesize_final(
     stage1_results: List[Dict[str, Any]],
     stage2_results: List[Dict[str, Any]],
     chairman_model: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -157,7 +168,10 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
-    chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
+    history = history or []
+    history_context = "[Note: This is a follow-up question in an ongoing conversation.]\n\n" if history else ""
+
+    chairman_prompt = f"""{history_context}You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
 Original Question: {user_query}
 
@@ -174,20 +188,25 @@ Your task as Chairman is to synthesize all of this information into a single, co
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
-    messages = [{"role": "user", "content": chairman_prompt}]
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": chairman_prompt})
 
-    # Query the chairman model
-    response = await query_model(target_model, messages, api_key=api_key)
+    # Query the chairman model with fallback
+    response, actual_model = await query_model_with_fallback(target_model, messages, api_key=api_key)
 
     if response is None:
-        # Fallback if chairman fails
+        # Fallback if chairman fails completely across all fallbacks
         return {
             "model": target_model,
+            "original_model": None,
             "response": "Error: Unable to generate final synthesis."
         }
 
     return {
-        "model": target_model,
+        "model": actual_model,
+        "original_model": target_model if actual_model != target_model else None,
         "response": response.get('content', '')
     }
 
@@ -293,8 +312,8 @@ Title:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
-    response = await query_model("google/gemma-3-4b-it:free", messages, timeout=30.0, api_key=api_key)
+    # Use gemini-2.5-flash for title generation (fast and cheap) with fallbacks
+    response, _ = await query_model_with_fallback("google/gemma-3-4b-it:free", messages, timeout=30.0, api_key=api_key)
 
     if response is None:
         # Fallback to a generic title
@@ -316,7 +335,9 @@ async def run_full_council(
     user_query: str,
     council_members: Optional[List[str]] = None,
     chairman_model: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    history: Optional[List[Dict[str, str]]] = None
 ) -> Tuple[List, List, Dict, Dict]:
     """
     Run the complete 3-stage council process.
@@ -337,8 +358,9 @@ async def run_full_council(
     if len(members) < 1:
         raise ValueError("Council requires at least 1 member.")
 
+    history = history or []
     # Stage 1: Collect individual responses
-    stage1_results = await stage1_collect_responses(user_query, members, api_key=api_key)
+    stage1_results = await stage1_collect_responses(user_query, members, api_key=api_key, system_prompt=system_prompt, history=history)
 
     # If no models responded successfully, return error
     if len(stage1_results) < 1:
@@ -365,7 +387,9 @@ async def run_full_council(
         stage1_results,
         stage2_results,
         chairman_model=chairman_model,
-        api_key=api_key
+        api_key=api_key,
+        system_prompt=system_prompt,
+        history=history
     )
 
     # Prepare metadata

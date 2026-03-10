@@ -115,9 +115,16 @@ export default function Stage2Rankings({
               key={ranking.model}
               className="bg-transparent border-b border-border p-3 mb-1"
             >
-              <Text className="text-sm font-medium text-foreground mb-1">
-                {getModelShortName(ranking.model)} ranked:
-              </Text>
+              <View className="flex-row items-baseline mb-1 flex-wrap">
+                <Text className="text-sm font-medium text-foreground">
+                  {getModelShortName(ranking.model)} ranked:
+                </Text>
+                {ranking.original_model && (
+                  <Text className="text-xs font-medium text-amber-500 ml-2">
+                    fallback - {getModelShortName(ranking.original_model)} (which was not available)
+                  </Text>
+                )}
+              </View>
               <View className="flex-row flex-wrap">
                 {ranking.parsed_ranking.map((label, idx) => (
                   <View

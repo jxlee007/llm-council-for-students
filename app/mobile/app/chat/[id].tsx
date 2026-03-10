@@ -12,6 +12,7 @@ import MessageBubble from "../../components/MessageBubble";
 import { Banner } from "../../components/Banner";
 import { FadeInView } from "../../components/FadeInView";
 import PresetsModal from "../../components/PresetsModal";
+import { PRESETS } from "../../lib/presets";
 import { FullscreenImageModal } from "../../components/FullscreenImageModal";
 import { Id } from "../../convex/_generated/dataModel";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -39,6 +40,7 @@ function ChatScreen() {
     councilModels,
     chairmanModel,
     activePresetId,
+    customSystemPrompts,
     pendingMessage,
     setPendingMessage,
   } = useUIStore();
@@ -185,6 +187,15 @@ function ChatScreen() {
         contentLength: displayContent.length,
       });
 
+      const systemPrompt = activePresetId 
+        ? (customSystemPrompts[activePresetId] ?? PRESETS[activePresetId]?.system_prompt)
+        : undefined;
+
+      const rawHistory = messages
+        ?.filter((m: any) => m.role === "user" || m.role === "assistant")
+        .map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content || "" }))
+        .slice(-10);
+
       const result = await runCouncil({
         conversationId,
         content: displayContent,
@@ -196,6 +207,8 @@ function ChatScreen() {
         imageBase64: image?.base64,
         imageMimeType: image?.type,
         attachmentType,
+        systemPrompt,
+        history: rawHistory,
       });
 
       console.log("[ChatScreen] runCouncil result:", result);

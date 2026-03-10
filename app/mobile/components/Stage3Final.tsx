@@ -31,6 +31,19 @@ export default function Stage3Final({ response }: Stage3FinalProps) {
 
   return (
     <View className="w-full bg-transparent">
+      {/* Chairman Model Info */}
+      <View className="px-4 pt-4 pb-2 flex-row items-center flex-wrap">
+        <Crown size={18} color="#34d399" className="mr-2" />
+        <Text className="text-sm font-bold text-emerald-400">
+          {getModelShortName(response.model)}
+        </Text>
+        {response.original_model && (
+          <Text className="text-xs font-medium text-amber-500 ml-2">
+            fallback - {getModelShortName(response.original_model)} (which was not available)
+          </Text>
+        )}
+      </View>
+
       {/* Content - Fully expanded view (no nested scroll) */}
       <View
         style={{

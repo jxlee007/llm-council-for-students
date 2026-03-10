@@ -6,6 +6,8 @@ import {
   ScrollView,
   Dimensions,
   TouchableWithoutFeedback,
+  ActivityIndicator,
+  TextInput,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -16,8 +18,10 @@ import Animated, {
   FadeInDown,
 } from "react-native-reanimated";
 import { useUIStore } from "../lib/store";
-import { PRESETS, PRESET_ICONS } from "../lib/presets";
-import { Check } from "lucide-react-native";
+import { PRESETS, PRESET_ICONS, generateDynamicPreset } from "../lib/presets";
+import { getFreeModels } from "../lib/api";
+import { Model } from "../lib/types";
+import { Check, Loader2 } from "lucide-react-native";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -28,16 +32,21 @@ interface PresetsModalProps {
 
 export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
   const {
+    availableModels,
+    fetchModelsIfNeeded,
     setCouncilModels,
     setChairmanModel,
     activePresetId,
     setActivePresetId,
+    customSystemPrompts,
+    updateCustomSystemPrompt,
   } = useUIStore();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
 
   const [expandedPreset, setExpandedPreset] = useState<string | null>(null);
   const [lastTap, setLastTap] = useState<{ key: string; time: number } | null>(null);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -46,6 +55,14 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
         easing: Easing.out(Easing.cubic),
       });
       opacity.value = withTiming(1, { duration: 200 });
+
+      // Fetch models if not already loaded or cache expired
+      if (!isLoadingModels) {
+        setIsLoadingModels(true);
+        fetchModelsIfNeeded()
+          .finally(() => setIsLoadingModels(false));
+      }
+
     } else {
       translateY.value = withTiming(SCREEN_HEIGHT, {
         duration: 250,
@@ -66,9 +83,13 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
   }));
 
   const handleSelectPreset = (key: string) => {
-    const preset = PRESETS[key];
-    setCouncilModels(preset.members, key);
-    setChairmanModel(preset.chairman, key);
+    if (availableModels.length === 0) return;
+    
+    const generated = generateDynamicPreset(key, availableModels);
+    if (generated) {
+      setCouncilModels(generated.members, key);
+      setChairmanModel(generated.chairman, key);
+    }
   };
 
   const handlePress = (key: string) => {
@@ -122,7 +143,7 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
             Select a Council Preset
           </Text>
           <Text className="text-muted-foreground text-sm mt-1">
-            Single tap to select. Double tap to view models.
+            Single tap to select. Double tap to edit system prompt.
           </Text>
         </View>
 
@@ -178,25 +199,26 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
                   )}
                 </View>
 
-                {/* Expanded Models List */}
+                {/* Expanded Prompt Editor */}
                 {isExpanded && (
-                  <View className="mt-4 pt-3 border-t border-border/50">
-                    <Text className="text-xs font-semibold text-muted-foreground mb-3">
-                      COUNCIL MEMBERS
+                  <View className="mt-4 pt-4 border-t border-border/50">
+                    <Text className="text-xs font-semibold text-muted-foreground mb-3 flex-row items-center">
+                      SYSTEM ROLE PROMPT
                     </Text>
-                    {preset.members.map((modelId, idx) => (
-                      <View key={idx} className="flex-row items-center mb-2 ml-1">
-                        <View className="w-1.5 h-1.5 rounded-full bg-primary/50 mr-3" />
-                        <Text className="text-sm text-foreground/80 flex-1">
-                          {formatModelName(modelId)}
-                        </Text>
-                        {preset.chairman === modelId && (
-                          <Text className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded ml-2 overflow-hidden">
-                            CHAIRMAN
-                          </Text>
-                        )}
-                      </View>
-                    ))}
+                    
+                    <TextInput
+                      className="bg-muted/50 border border-border/50 rounded-xl p-3 text-sm text-foreground min-h-[100px]"
+                      multiline
+                      value={customSystemPrompts[key] ?? preset.system_prompt}
+                      onChangeText={(text) => updateCustomSystemPrompt(key, text)}
+                      placeholder="Enter system prompt here..."
+                      placeholderTextColor="#94a3b8"
+                      textAlignVertical="top"
+                    />
+                    
+                    <Text className="text-[10px] text-muted-foreground mt-2 italic">
+                      This prompt guides all models in the council. Changes are saved automatically.
+                    </Text>
                   </View>
                 )}
               </TouchableOpacity>

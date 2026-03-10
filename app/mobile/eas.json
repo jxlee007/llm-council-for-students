@@ -16,7 +16,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_APP_VARIANT": "preview",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       },
       "autoIncrement": true,
       "channel": "preview",
@@ -27,14 +28,16 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_APP_VARIANT": "production"
+        "EXPO_PUBLIC_APP_VARIANT": "production",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "channel": "production",
       "ios": {
         "resourceClass": "m-medium"
       },
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       }
     }
   },

@@ -14,6 +14,7 @@ const STREAM_TIMEOUT_MS = 180000; // 3 minutes max for full stream
  */
 interface Stage1Response {
     model: string;
+    original_model?: string;
     response: string;
 }
 
@@ -22,6 +23,7 @@ interface Stage1Response {
  */
 interface Stage2Response {
     model: string;
+    original_model?: string;
     ranking: string;
     parsed_ranking: string[];
 }
@@ -31,6 +33,7 @@ interface Stage2Response {
  */
 interface Stage3Response {
     model: string;
+    original_model?: string;
     response: string;
 }
 
@@ -70,6 +73,15 @@ export const runCouncil = action({
         chairmanModel: v.optional(v.string()),
         imageBase64: v.optional(v.string()),
         imageMimeType: v.optional(v.string()),
+        systemPrompt: v.optional(v.string()),
+        history: v.optional(
+            v.array(
+                v.object({
+                    role: v.union(v.literal("user"), v.literal("assistant")),
+                    content: v.string(),
+                })
+            )
+        ),
     },
     handler: async (ctx, args) => {
         const identity = await ctx.auth.getUserIdentity();
@@ -84,6 +96,9 @@ export const runCouncil = action({
             limit: 5,
             windowMs: 60 * 1000,
         });
+
+        // 0. Fetch prior messages before we insert new ones
+        const priorMessages = await ctx.runQuery(internal.messages.list, { conversationId: args.conversationId });
 
         // 1. Create user message
         const type = args.imageBase64 ? (args.content ? "image_text" : "image") : "text";
@@ -135,12 +150,43 @@ export const runCouncil = action({
             console.warn("[Council] No API Key configured, backend may require one");
         }
 
+        // Build a trimmed history array from prior messages
+        const sourceMessages = args.history || priorMessages;
+        const trimmedHistory: Array<{ role: "user" | "assistant"; content: string }> = [];
+        let totalChars = 0;
+        
+        const validMessages = [...sourceMessages].filter(
+            (m: any) => m.role === "user" || m.role === "assistant"
+        ).reverse();
+        
+        for (const msg of validMessages) {
+            if (trimmedHistory.length >= 10) break;
+            
+            const content = msg.content || "";
+            if (!content.trim()) continue;
+            
+            const truncated = content.slice(0, 1000);
+            
+            if (totalChars + truncated.length > 6000) {
+                break;
+            }
+            
+            trimmedHistory.unshift({
+                role: msg.role as "user" | "assistant",
+                content: truncated,
+            });
+            totalChars += truncated.length;
+        }
+
         // Combine context and content for the LLM prompt
         const llmPrompt = args.context
             ? `${args.context}\n\n${args.content}`
             : args.content;
 
-        const body: Record<string, unknown> = { content: llmPrompt };
+        const body: Record<string, unknown> = { 
+            content: llmPrompt,
+            history: trimmedHistory
+        };
         if (args.councilMembers && args.councilMembers.length > 0) {
             body.council_members = args.councilMembers;
         }
@@ -152,6 +198,9 @@ export const runCouncil = action({
                 data: args.imageBase64,
                 mime_type: args.imageMimeType || "image/jpeg",
             };
+        }
+        if (args.systemPrompt) {
+            body.system_prompt = args.systemPrompt;
         }
 
         try {

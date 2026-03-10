@@ -26,27 +26,10 @@ import { tokenCache } from "../lib/tokenCache";
 import { useUIStore } from "../lib/store";
 import { api } from "../convex/_generated/api";
 import Config, { getConfigErrorMessage } from "../lib/config";
-import { initLogger, sentryWrap, navigationIntegration } from "../lib/logger";
+import { initLogger, sentryWrap, navigationIntegration, logError, logWarning } from "../lib/logger";
 import * as Sentry from '@sentry/react-native';
 
-Sentry.init({
-  dsn: 'https://09fb75f6abdb2ea9735b82bfe6833b8f@o4510163824345088.ingest.de.sentry.io/4510721046020176',
-
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
-
-  // Enable Logs
-  enableLogs: true,
-
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
-
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
+// Sentry is initialized via initLogger() in AppNavigation/RootLayout below.
 
 // Initialize Convex client (only if URL is valid)
 const convex = Config.convexUrl
@@ -76,7 +59,7 @@ function AppNavigation() {
   // Track app state for resume handling
   const [isResuming, setIsResuming] = useState(false);
   const appStateRef = useRef(AppState.currentState);
-  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const navigationTimeoutRef = useRef<any | null>(null);
 
   // Handle app state changes to prevent auth flicker on resume
   useEffect(() => {
@@ -129,8 +112,8 @@ function AppNavigation() {
   useEffect(() => {
     if (isAuthenticated) {
       getOrCreateUser()
-        .then(() => console.log("[User Sync] User record ensured"))
-        .catch((err) => console.error("[User Sync] Failed:", err));
+        .then(() => logWarning("[User Sync] User record ensured"))
+        .catch((err) => logError(err, { context: "User Sync" }));
     }
   }, [isAuthenticated, getOrCreateUser]);
 

@@ -13,6 +13,8 @@ import { ExtractedFile, ExtractedImage } from './files';
 const API_KEY_SECURE_KEY = 'openrouter_api_key';
 const COUNCIL_MODELS_KEY = '@llm_council_models';
 const CHAIRMAN_MODEL_KEY = '@llm_council_chairman';
+const ACTIVE_PRESET_KEY = '@llm_council_active_preset';
+const CUSTOM_PROMPTS_KEY = '@llm_council_custom_prompts';
 
 // SecureStore helper that falls back to AsyncStorage on web
 const secureStorage = {
@@ -48,6 +50,7 @@ interface UIState {
   councilModels: string[];
   chairmanModel: string | null;
   activePresetId: string | null;
+  customSystemPrompts: Record<string, string>;
 
   // Pending message for navigation
   pendingMessage: {
@@ -56,11 +59,17 @@ interface UIState {
     images?: ExtractedImage[];
   } | null;
 
+  // Available models (cached)
+  availableModels: any[];
+  modelsLastFetched: number;
+
   // Actions
   loadSettings: () => Promise<void>;
+  fetchModelsIfNeeded: () => Promise<any[]>;
   setCouncilModels: (models: string[], presetId?: string) => void;
   setChairmanModel: (model: string | null, presetId?: string) => void;
   setActivePresetId: (id: string | null) => void;
+  updateCustomSystemPrompt: (presetId: string, prompt: string) => void;
   setPendingMessage: (message: { content: string; attachments?: ExtractedFile[]; images?: ExtractedImage[] } | null) => void;
 
   // API Key management
@@ -70,16 +79,7 @@ interface UIState {
   checkApiKeyExists: () => Promise<void>;
 }
 
-const findMatchingPreset = (councilModels: string[], chairmanModel: string | null): string | null => {
-  const match = Object.entries(PRESETS).find(([key, preset]) => {
-    const membersMatch =
-      preset.members.length === councilModels.length &&
-      preset.members.every((m) => councilModels.includes(m));
-    const chairmanMatch = preset.chairman === chairmanModel;
-    return membersMatch && chairmanMatch;
-  });
-  return match ? match[0] : null;
-};
+// findMatchingPreset removed since presets are now dynamic
 
 export const useUIStore = create<UIState>((set, get) => ({
 
@@ -88,9 +88,33 @@ export const useUIStore = create<UIState>((set, get) => ({
   councilModels: [],
   chairmanModel: null,
   activePresetId: null,
+  customSystemPrompts: {},
   pendingMessage: null,
+  availableModels: [],
+  modelsLastFetched: 0,
 
   setPendingMessage: (message) => set({ pendingMessage: message }),
+
+  // Fetch models with 60s cache
+  fetchModelsIfNeeded: async () => {
+    const { availableModels, modelsLastFetched } = get();
+    const now = Date.now();
+    
+    // Check if cache is still valid (60s)
+    if (availableModels.length > 0 && (now - modelsLastFetched) < 60000) {
+      return availableModels;
+    }
+
+    try {
+      const { getFreeModels } = await import('./api');
+      const models = await getFreeModels();
+      set({ availableModels: models, modelsLastFetched: now });
+      return models;
+    } catch (error) {
+      console.error('[Store] Failed to fetch models:', error);
+      return availableModels; // Return stale cache on error
+    }
+  },
 
   // Load local settings
   loadSettings: async () => {
@@ -105,10 +129,20 @@ export const useUIStore = create<UIState>((set, get) => ({
       const chairmanData = await AsyncStorage.getItem(CHAIRMAN_MODEL_KEY);
       const loadedChairman = chairmanData || null;
 
+      const presetData = await AsyncStorage.getItem(ACTIVE_PRESET_KEY);
+      const loadedPreset = presetData || null;
+
+      const promptData = await AsyncStorage.getItem(CUSTOM_PROMPTS_KEY);
+      let loadedPrompts: Record<string, string> = {};
+      if (promptData) {
+        loadedPrompts = JSON.parse(promptData);
+      }
+
       set({
         councilModels: loadedCouncil,
         chairmanModel: loadedChairman,
-        activePresetId: findMatchingPreset(loadedCouncil, loadedChairman)
+        activePresetId: loadedPreset,
+        customSystemPrompts: loadedPrompts
       });
 
       // Check API key
@@ -120,26 +154,59 @@ export const useUIStore = create<UIState>((set, get) => ({
     }
   },
 
-  setCouncilModels: (models, presetId) => {
-    const { chairmanModel } = get();
-    const detectedPreset = presetId || findMatchingPreset(models, chairmanModel);
-    set({ councilModels: models, activePresetId: detectedPreset });
-    AsyncStorage.setItem(COUNCIL_MODELS_KEY, JSON.stringify(models));
-  },
-
-  setChairmanModel: (model, presetId) => {
-    const { councilModels } = get();
-    const detectedPreset = presetId || findMatchingPreset(councilModels, model);
-    set({ chairmanModel: model, activePresetId: detectedPreset });
-    if (model) {
-      AsyncStorage.setItem(CHAIRMAN_MODEL_KEY, model);
-    } else {
-      AsyncStorage.removeItem(CHAIRMAN_MODEL_KEY);
+  setCouncilModels: async (models, presetId) => {
+    try {
+      set({ councilModels: models, activePresetId: presetId || null });
+      await AsyncStorage.setItem(COUNCIL_MODELS_KEY, JSON.stringify(models));
+      if (presetId) {
+        await AsyncStorage.setItem(ACTIVE_PRESET_KEY, presetId);
+      } else {
+        await AsyncStorage.removeItem(ACTIVE_PRESET_KEY);
+      }
+    } catch (error) {
+      console.error('[Store] Failed to save council models:', error);
     }
   },
 
-  setActivePresetId: (id) => {
-    set({ activePresetId: id });
+  setChairmanModel: async (model, presetId) => {
+    try {
+      set({ chairmanModel: model, activePresetId: presetId || null });
+      if (model) {
+        await AsyncStorage.setItem(CHAIRMAN_MODEL_KEY, model);
+      } else {
+        await AsyncStorage.removeItem(CHAIRMAN_MODEL_KEY);
+      }
+      if (presetId) {
+        await AsyncStorage.setItem(ACTIVE_PRESET_KEY, presetId);
+      } else {
+        await AsyncStorage.removeItem(ACTIVE_PRESET_KEY);
+      }
+    } catch (error) {
+      console.error('[Store] Failed to save chairman model:', error);
+    }
+  },
+
+  setActivePresetId: async (id) => {
+    try {
+      set({ activePresetId: id });
+      if (id) {
+        await AsyncStorage.setItem(ACTIVE_PRESET_KEY, id);
+      } else {
+        await AsyncStorage.removeItem(ACTIVE_PRESET_KEY);
+      }
+    } catch (error) {
+      console.error('[Store] Failed to save active preset:', error);
+    }
+  },
+
+  updateCustomSystemPrompt: async (presetId, prompt) => {
+    try {
+      const prompts = { ...get().customSystemPrompts, [presetId]: prompt };
+      set({ customSystemPrompts: prompts });
+      await AsyncStorage.setItem(CUSTOM_PROMPTS_KEY, JSON.stringify(prompts));
+    } catch (error) {
+      console.error('[Store] Failed to save custom system prompt:', error);
+    }
   },
 
   // API Key management

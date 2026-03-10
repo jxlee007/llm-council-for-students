@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { View, Text } from "react-native";
-import { MessageSquare, Trophy, Crown } from "lucide-react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+  FadeInDown,
+  FadeOutUp,
+} from "react-native-reanimated";
 import type {
   Stage1Response,
   Stage2Response,
@@ -10,147 +17,125 @@ import type {
 import Stage1Tabs from "./Stage1Tabs";
 import Stage2Rankings from "./Stage2Rankings";
 import Stage3Final from "./Stage3Final";
-import ExpandableSection from "./ExpandableSection";
-import CouncilLoader from "./CouncilLoader";
+import StageFlowIndicator from "./StageFlowIndicator";
 
 interface CouncilResponseProps {
   stage1?: Stage1Response[];
   stage2?: Stage2Response[];
   stage3?: Stage3Response;
   aggregateRankings?: AggregateRanking[];
+  /** Total expected council members (for stage 1 counter) */
+  totalMembers?: number;
 }
-
-const ANIMATION_TOKENS = {
-  stage1: { duration: 180, easing: undefined },
-  stage2: { duration: 160, easing: undefined },
-  stage3: { duration: 220, easing: undefined },
-};
 
 export default function CouncilResponse({
   stage1 = [],
   stage2 = [],
   stage3,
   aggregateRankings,
+  totalMembers = 4,
 }: CouncilResponseProps) {
-  // Stage presence
   const hasStage1 = stage1 && stage1.length > 0;
   const hasStage2 = stage2 && stage2.length > 0;
+  const hasStage3 = !!stage3;
 
-  // State
-  const [isConsulting, setIsConsulting] = useState(true);
-  const [expandedStages, setExpandedStages] = useState({
-    stage1: false,
-    stage2: false,
-    stage3: true,
-  });
+  // The tab selected by the user (or auto-advance)
+  const [selectedStage, setSelectedStage] = useState<1 | 2 | 3 | null>(null);
 
-  // Refs for tracking changes
   const prevStage1Count = useRef(0);
   const hasStage3Arrived = useRef(false);
 
-  // Orchestration Effect (simplified - no layout measurement)
+  // Determine the current "processing" stage number for visual state
+  const getActiveStage = (): 0 | 1 | 2 | 3 => {
+    if (hasStage3) return 3;
+    if (hasStage2) return 2;
+    if (hasStage1) return 1;
+    return 0;
+  };
+
+  // Auto-advance selected tab as stages come in
   useEffect(() => {
-    // 1. Initial State: Consulting
-    if (!hasStage1 && !hasStage2 && !stage3) {
-      setIsConsulting(true);
-      return;
-    }
+    if (!hasStage1 && !hasStage2 && !hasStage3) return;
 
-    const changes: Partial<typeof expandedStages> = {};
-
-    // 2. Stage 1 Arrival
-    if (hasStage1 && prevStage1Count.current === 0 && !stage3) {
-      setIsConsulting(false);
-      changes.stage1 = true;
-    }
-
-    // 3. Stage 3 Arrival
-    if (stage3 && !hasStage3Arrived.current) {
-      setIsConsulting(false);
-      changes.stage3 = true;
-      changes.stage1 = false;
-      changes.stage2 = false;
+    // Stage 3 arrives → auto-show stage 3
+    if (hasStage3 && !hasStage3Arrived.current) {
+      setSelectedStage(3);
       hasStage3Arrived.current = true;
     }
 
-    if (Object.keys(changes).length > 0) {
-      setExpandedStages((prev) => ({ ...prev, ...changes }));
+    // Stage 1 first arrives → auto-show stage 1
+    if (hasStage1 && prevStage1Count.current === 0 && !hasStage3) {
+      setSelectedStage(1);
     }
 
     prevStage1Count.current = stage1.length;
-  }, [stage1.length, stage2.length, !!stage3]);
+  }, [stage1.length, stage2.length, hasStage3]);
 
-  const toggleStage = (stage: keyof typeof expandedStages) => {
-    setExpandedStages((prev) => ({
-      ...prev,
-      [stage]: !prev[stage],
-    }));
+  const handleSelectStage = (stage: 1 | 2 | 3) => {
+    // Only allow selecting a stage that has data
+    if (stage === 1 && !hasStage1) return;
+    if (stage === 2 && !hasStage2) return;
+    if (stage === 3 && !hasStage3) return;
+    // Toggle off if already selected
+    setSelectedStage((prev) => (prev === stage ? null : stage));
+  };
+
+  const renderContent = () => {
+    if (selectedStage === 1 && hasStage1) {
+      return (
+        <Animated.View entering={FadeInDown.duration(220).easing(Easing.out(Easing.cubic))}>
+          <Stage1Tabs responses={stage1} />
+        </Animated.View>
+      );
+    }
+    if (selectedStage === 2 && hasStage2) {
+      return (
+        <Animated.View entering={FadeInDown.duration(220).easing(Easing.out(Easing.cubic))}>
+          <Stage2Rankings rankings={stage2} aggregateRankings={aggregateRankings} />
+        </Animated.View>
+      );
+    }
+    if (selectedStage === 3 && hasStage3) {
+      return (
+        <Animated.View entering={FadeInDown.duration(220).easing(Easing.out(Easing.cubic))}>
+          <Stage3Final response={stage3!} />
+        </Animated.View>
+      );
+    }
+    return null;
   };
 
   return (
-    <View className="space-y-1 my-2">
-      {/* Consulting Loader */}
-      {isConsulting && (
-        <View className="mb-2">
-          <CouncilLoader />
-        </View>
-      )}
+    <View style={{ marginVertical: 8 }}>
+      {/* Horizontal pill tab bar */}
+      <StageFlowIndicator
+        activeStage={getActiveStage()}
+        selectedStage={selectedStage}
+        onSelectStage={handleSelectStage}
+        stage1Count={stage1.length}
+        stage1Total={totalMembers}
+      />
 
-      {/* Stage 1: Reasoning */}
-      {hasStage1 && (
-        <View>
-          <ExpandableSection
-            title="STAGE 1 - REASON"
-            expanded={expandedStages.stage1}
-            onToggle={() => toggleStage("stage1")}
-            accentColor="#60a5fa"
-            icon={<MessageSquare size={14} color="#60a5fa" />}
-            headerRight={
-              !expandedStages.stage1 && (
-                <Text className="text-xs text-muted-foreground mr-2">
-                  {stage1.length} models
-                </Text>
-              )
-            }
-            duration={ANIMATION_TOKENS.stage1.duration}
-          >
-            <Stage1Tabs responses={stage1} />
-          </ExpandableSection>
-        </View>
-      )}
-
-      {/* Stage 2: Comparisons */}
-      {hasStage2 && (
-        <View>
-          <ExpandableSection
-            title="STAGE 2 - COMPARE"
-            expanded={expandedStages.stage2}
-            onToggle={() => toggleStage("stage2")}
-            accentColor="#fbbf24"
-            icon={<Trophy size={14} color="#fbbf24" />}
-            duration={ANIMATION_TOKENS.stage2.duration}
-          >
-            <Stage2Rankings
-              rankings={stage2}
-              aggregateRankings={aggregateRankings}
-            />
-          </ExpandableSection>
-        </View>
-      )}
-
-      {/* Stage 3: Final Answer */}
-      {stage3 && (
-        <View>
-          <ExpandableSection
-            title="STAGE 3 - RESULT"
-            expanded={expandedStages.stage3}
-            onToggle={() => toggleStage("stage3")}
-            accentColor="#34d399"
-            icon={<Crown size={14} color="#34d399" />}
-            duration={ANIMATION_TOKENS.stage3.duration}
-          >
-            <Stage3Final response={stage3} />
-          </ExpandableSection>
+      {/* Content area — driven by selected stage tab */}
+      {selectedStage !== null && (
+        <View
+          key={selectedStage}
+          style={{
+            marginTop: 4,
+            marginHorizontal: 2,
+            borderRadius: 16,
+            overflow: "hidden",
+            borderWidth: 1,
+            borderColor:
+              selectedStage === 1
+                ? "#60a5fa33"
+                : selectedStage === 2
+                ? "#fbbf2433"
+                : "#34d39933",
+            backgroundColor: "#0d1524",
+          }}
+        >
+          <View style={{ padding: 12 }}>{renderContent()}</View>
         </View>
       )}
     </View>

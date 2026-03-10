@@ -3,8 +3,17 @@ import json
 import asyncio
 import httpx
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Set
 from .config import OPENROUTER_API_URL, OPENROUTER_API_KEY as DEFAULT_API_KEY
+
+# Fallback models for text queries (high availability, free)
+FALLBACK_MODELS = [
+    "google/gemma-3-27b-it:free",
+    "xiaomi/mimo-v2-flash:free",
+    "mistralai/devstral-2512:free",
+    "qwen/qwen3-coder:free",
+    "tngtech/deepseek-r1t-chimera:free"
+]
 
 # Simple in-memory cache
 MODEL_CACHE = {
@@ -97,15 +106,6 @@ async def query_model(
 ) -> Optional[Dict[str, Any]]:
     """
     Query a single model via OpenRouter.
-    
-    Args:
-        model: Model ID to query
-        messages: List of message dicts
-        timeout: Request timeout in seconds
-        api_key: Optional API key override
-        
-    Returns:
-        Response message dict or None on failure
     """
     key = api_key or DEFAULT_API_KEY
     if not key:
@@ -134,7 +134,6 @@ async def query_model(
             )
             
             if response.status_code != 200:
-                # Log error but don't crush the app
                 print(f"Error querying {model}: {response.status_code} - {response.text}")
                 return None
             
@@ -152,40 +151,81 @@ async def query_model(
             return None
 
 
-async def query_models_parallel(
+async def query_models_parallel_with_fallbacks(
     models: List[str],
     messages: List[Dict[str, str]],
     api_key: Optional[str] = None
 ) -> Dict[str, Optional[Dict[str, Any]]]:
     """
-    Query multiple models in parallel.
+    Query multiple models in parallel with built-in retries using fallback models.
     
-    Args:
-        models: List of model IDs
-        messages: List of message dicts
-        api_key: Optional API key override
-        
     Returns:
-        Dictionary mapping model ID to response message (or None)
+        Dict mapping original requested model to dict with:
+        - "model_used": The actual model that succeeded
+        - "message": The response message (or None if all failed)
+        - "original_model": The original model requested
     """
-    tasks = []
-    # Create tasks for all models
-    for model in models:
-        tasks.append(query_model(model, messages, api_key=api_key))
-        
-    # Run all tasks concurrently
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-    
-    # Map results back to models
     output = {}
-    for model, result in zip(models, results):
-        if isinstance(result, Exception):
-            print(f"Error in parallel query for {model}: {result}")
-            output[model] = None
-        else:
-            output[model] = result
+    
+    # We will track which fallbacks have been used so we don't pick the same one twice
+    used_fallbacks: Set[str] = set()
+    
+    async def worker(original_model: str):
+        # 1. Try original model
+        result = await query_model(original_model, messages, api_key=api_key)
+        if result is not None:
+             return original_model, {"model_used": original_model, "message": result, "original_model": original_model}
+        
+        # 2. Original failed, try fallbacks sequentially
+        for fallback in FALLBACK_MODELS:
+            # Skip if we already used this fallback for another failing model in this batch
+            # or if the fallback happens to be the original model
+            if fallback in used_fallbacks or fallback == original_model:
+                continue
             
+            used_fallbacks.add(fallback) # claim it
+            print(f"Fallback triggered: replacing {original_model} with {fallback}")
+            fallback_result = await query_model(fallback, messages, api_key=api_key)
+            if fallback_result is not None:
+                return original_model, {"model_used": fallback, "message": fallback_result, "original_model": original_model}
+                
+        # 3. All fallbacks failed
+        print(f"All fallbacks failed for {original_model}")
+        return original_model, {"model_used": original_model, "message": None, "original_model": original_model}
+
+    tasks = [worker(m) for m in models]
+    results = await asyncio.gather(*tasks)
+    
+    for req_model, data in results:
+        output[req_model] = data
+        
     return output
+
+
+async def query_model_with_fallback(
+    model: str,
+    messages: List[Dict[str, str]],
+    timeout: float = 60.0,
+    api_key: Optional[str] = None
+) -> Tuple[Optional[Dict[str, Any]], str]:
+    """
+    Queries a single model and falls back if it fails.
+    Useful for the Chairman model (Stage 3).
+    Returns (response_message, actual_model_used)
+    """
+    result = await query_model(model, messages, timeout=timeout, api_key=api_key)
+    if result is not None:
+        return result, model
+        
+    for fallback in FALLBACK_MODELS:
+        if fallback == model:
+            continue
+        print(f"Stage 3 Fallback triggered: replacing {model} with {fallback}")
+        fallback_result = await query_model(fallback, messages, timeout=timeout, api_key=api_key)
+        if fallback_result is not None:
+            return fallback_result, fallback
+            
+    return None, model
 
 
 async def get_free_models() -> List[Dict[str, Any]]:

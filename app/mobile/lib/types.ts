@@ -25,12 +25,14 @@ export interface Model {
 /** Stage 1: Individual model response */
 export interface Stage1Response {
     model: string;
+    original_model?: string;
     response: string;
 }
 
 /** Stage 2: Model ranking with parsed data */
 export interface Stage2Response {
     model: string;
+    original_model?: string;
     ranking: string;
     parsed_ranking: string[];
 }
@@ -38,6 +40,7 @@ export interface Stage2Response {
 /** Stage 3: Chairman's final synthesized answer */
 export interface Stage3Response {
     model: string;
+    original_model?: string;
     response: string;
 }
 

@@ -71,6 +71,8 @@ class SendMessageRequest(BaseModel):
     council_members: Optional[List[str]] = None
     chairman_model: Optional[str] = None
     image_data: Optional[Dict[str, str]] = None  # {data: base64_str, mime_type: str}
+    system_prompt: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
 
 
 # ============================================================================
@@ -121,7 +123,9 @@ async def send_message(
             normalized_prompt,
             council_members=request.council_members,
             chairman_model=request.chairman_model,
-            api_key=x_openrouter_key
+            api_key=x_openrouter_key,
+            system_prompt=request.system_prompt,
+            history=request.history or []
         )
 
         # Return the complete response with metadata (no persistence)
@@ -299,7 +303,13 @@ async def send_message_stream(
 
             # Stage 1: Collect responses
             yield f"data: {json.dumps({'type': 'stage1_start'})}\n\n"
-            stage1_results = await stage1_collect_responses(normalized_prompt, council_members, api_key=api_key)
+            stage1_results = await stage1_collect_responses(
+                normalized_prompt, 
+                council_members, 
+                api_key=api_key,
+                system_prompt=request.system_prompt,
+                history=request.history or []
+            )
 
             # Check quorum after response
             if len(stage1_results) < 1:
@@ -321,7 +331,9 @@ async def send_message_stream(
                 stage1_results,
                 stage2_results,
                 chairman_model=request.chairman_model,
-                api_key=api_key
+                api_key=api_key,
+                system_prompt=request.system_prompt,
+                history=request.history or []
             )
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result})}\n\n"
 
