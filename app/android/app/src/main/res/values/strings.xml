@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Council</string>
+    <string name="sign_in">Sign In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="forgot_password">Forgot Password?</string>
+    <string name="create_account">Create Account</string>
+    <string name="already_have_account">Already have an account? Sign In</string>
+    <string name="dont_have_account">Don\'t have an account? Sign Up</string>
+    <string name="new_conversation">New Conversation</string>
+    <string name="no_conversations">No conversations yet. Start one!</string>
+    <string name="type_message">Type a message…</string>
+    <string name="send">Send</string>
+    <string name="attach">Attach</string>
+    <string name="analyze">Analyze</string>
+    <string name="analyzing">Analyzing…</string>
+    <string name="council_processing">Council is processing…</string>
+    <string name="stage1_label">Stage 1 · Individual Responses</string>
+    <string name="stage2_label">Stage 2 · Peer Rankings</string>
+    <string name="stage3_label">Stage 3 · Final Synthesis</string>
+    <string name="configure_council">Configure Council</string>
+    <string name="select_council_members">Select Council Members</string>
+    <string name="select_chairman">Select Chairman</string>
+    <string name="presets">Presets</string>
+    <string name="settings">Settings</string>
+    <string name="api_server_url">API Server URL</string>
+    <string name="test_connection">Test Connection</string>
+    <string name="connection_ok">Connection OK</string>
+    <string name="connection_failed">Connection Failed</string>
+    <string name="vision_models">Vision Models</string>
+    <string name="on_device_vision">On-Device Vision</string>
+    <string name="on_device_badge">Analyzed on-device · Private</string>
+    <string name="retry">Retry</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="confirm">Confirm</string>
+    <string name="copy">Copy</string>
+    <string name="copied">Copied to clipboard</string>
+    <string name="no_vision_model_loaded">No vision model loaded. Image context will not be sent.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+    <string name="file_provider_authority">com.council.app.fileprovider</string>
+</resources>
