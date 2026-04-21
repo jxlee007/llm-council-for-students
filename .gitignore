@@ -6,12 +6,7 @@ node_modules/
 dist/
 web-build/
 
-# Native build artifacts
-*.apk
-*.aab
-*.apks
-/ios
-/android
+
 
 # Environment files
 .env*.local
