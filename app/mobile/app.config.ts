@@ -1,9 +1,10 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => {
-  const isDev = process.env.EXPO_PUBLIC_APP_VARIANT === 'development';
-  const isPreview = process.env.EXPO_PUBLIC_APP_VARIANT === 'preview';
-  const isProd = process.env.EXPO_PUBLIC_APP_VARIANT === 'production';
+  const appEnv = process.env.APP_ENV || process.env.EXPO_PUBLIC_APP_VARIANT || 'development';
+  const isDev = appEnv === 'development';
+  const isPreview = appEnv === 'preview';
+  const isProd = appEnv === 'production';
 
   const projectId = process.env.EAS_PROJECT_ID || '044eb304-db9b-49c9-9b3f-7d03bb4f0edd';
 
@@ -93,6 +94,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       eas: {
         projectId: projectId
       },
+      environment: process.env.APP_ENV || 'development',
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
       clerkKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
       sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,

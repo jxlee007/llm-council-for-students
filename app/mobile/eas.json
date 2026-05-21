@@ -8,6 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
+        "APP_ENV": "development",
         "EXPO_PUBLIC_APP_VARIANT": "development"
       },
       "channel": "development"
@@ -15,6 +16,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
+        "APP_ENV": "preview",
         "EXPO_PUBLIC_APP_VARIANT": "preview",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
@@ -28,6 +30,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
+        "APP_ENV": "production",
         "EXPO_PUBLIC_APP_VARIANT": "production",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
