@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView } from "react-native";
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
+import * as Linking from "expo-linking";
 import { useWarmUpBrowser } from "../../lib/useWarmUpBrowser";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -21,8 +21,15 @@ export default function SignIn() {
       console.log(`Starting OAuth flow for ${strategy}...`);
       const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
       
+      // Use Linking.createURL to dynamically compute callback URL using the app's registered custom scheme.
+      // The registered scheme in app.config.ts is 'llm-council'.
+      const redirectUrl = Linking.createURL("/oauth-callback", {
+        scheme: "llm-council",
+      });
+      console.log("Using redirect URL:", redirectUrl);
+
       const { createdSessionId, setActive } = await startFlow({
-        redirectUrl: AuthSession.makeRedirectUri({ native: "llm-council://" }),
+        redirectUrl,
       });
 
       console.log("OAuth response session ID:", createdSessionId);

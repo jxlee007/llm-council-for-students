@@ -151,26 +151,37 @@ export const storeEncryptedApiKey = internalMutation({
   args: {
     clerkId: v.string(),
     encryptedKey: v.string(),
+    email: v.optional(v.string()),
+    name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
     if (!user) {
-      throw new Error("User not found");
+      // Create user if not found (first-time login bypass or sync delay)
+      const userId = await ctx.db.insert("users", {
+        clerkId: args.clerkId,
+        email: args.email || "",
+        name: args.name,
+        isPro: false,
+        createdAt: Date.now(),
+        openRouterApiKey: args.encryptedKey,
+      });
+      user = await ctx.db.get(userId);
+    } else {
+      await ctx.db.patch(user._id, {
+        openRouterApiKey: args.encryptedKey,
+      });
     }
-
-    await ctx.db.patch(user._id, {
-      openRouterApiKey: args.encryptedKey,
-    });
 
     // Audit log for API key update
     await ctx.db.insert("audit_logs", {
       userId: args.clerkId,
       action: "user.update_api_key",
-      resourceId: user._id,
+      resourceId: user!._id,
       resourceType: "user",
       timestamp: Date.now(),
       success: true,
@@ -189,19 +200,26 @@ export const updateApiKey = mutation({
       throw new Error("Unauthorized");
     }
 
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
     if (!user) {
-      throw new Error("User not found");
+      const userId = await ctx.db.insert("users", {
+        clerkId: identity.subject,
+        email: identity.email || "",
+        name: identity.name,
+        isPro: false,
+        createdAt: Date.now(),
+        openRouterApiKey: args.apiKey,
+      });
+      user = await ctx.db.get(userId);
+    } else {
+      await ctx.db.patch(user._id, {
+        openRouterApiKey: args.apiKey,
+      });
     }
-
-    // Store as-is for now - the action wrapper handles encryption
-    await ctx.db.patch(user._id, {
-      openRouterApiKey: args.apiKey,
-    });
   },
 });
 

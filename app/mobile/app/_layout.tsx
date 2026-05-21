@@ -19,8 +19,7 @@ import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
 import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { AlertTriangle } from "lucide-react-native";
-
-import { ErrorBoundary } from "../components/ErrorBoundary";
+import { ErrorBoundary as AppErrorBoundary } from "../components/ErrorBoundary";
 import OfflineBanner from "../components/OfflineBanner";
 import { tokenCache } from "../lib/tokenCache";
 import { useUIStore } from "../lib/store";
@@ -50,11 +49,14 @@ initLogger();
  * 4. Handles app resume to prevent auth flicker.
  */
 function AppNavigation() {
-  const { isLoading, isAuthenticated } = useConvexAuth();
+  const { isLoaded: isClerkLoaded, isSignedIn } = useAuth();
+  const { isAuthenticated } = useConvexAuth();
   const segments = useSegments();
   const router = useRouter();
 
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
+  const settingsLoaded = useUIStore((state) => state.settingsLoaded);
+  const hasApiKey = useUIStore((state) => state.hasApiKey);
 
   // Track app state for resume handling
   const [isResuming, setIsResuming] = useState(false);
@@ -83,7 +85,7 @@ function AppNavigation() {
 
   // Navigation guard with debounce to prevent rapid redirects
   useEffect(() => {
-    if (isLoading || isResuming) return;
+    if (!isClerkLoaded || !settingsLoaded || isResuming) return;
 
     // Clear any pending navigation
     if (navigationTimeoutRef.current) {
@@ -92,12 +94,27 @@ function AppNavigation() {
 
     // Debounce navigation decisions
     navigationTimeoutRef.current = setTimeout(() => {
-      const inAuthGroup = segments[0] === "(auth)";
+      const pathSegments = segments as string[];
+      const inAuthGroup = pathSegments[0] === "(auth)";
+      const isSetupApiKeyScreen = pathSegments[0] === "(auth)" && pathSegments[1] === "setup-api-key";
 
-      if (!isAuthenticated && !inAuthGroup) {
-        router.replace("/(auth)/login");
-      } else if (isAuthenticated && inAuthGroup) {
-        router.replace("/(tabs)");
+      if (!isSignedIn) {
+        if (!inAuthGroup) {
+          router.replace("/(auth)/login");
+        }
+      } else {
+        // User is signed in
+        if (!hasApiKey) {
+          // If no API key, they must be redirected to setup-api-key
+          if (!isSetupApiKeyScreen) {
+            router.replace("/(auth)/setup-api-key");
+          }
+        } else {
+          // User is signed in and has API key
+          if (inAuthGroup) {
+            router.replace("/(tabs)");
+          }
+        }
       }
     }, 100);
 
@@ -106,9 +123,9 @@ function AppNavigation() {
         clearTimeout(navigationTimeoutRef.current);
       }
     };
-  }, [isAuthenticated, segments, isLoading, isResuming, router]);
+  }, [isSignedIn, segments, isClerkLoaded, settingsLoaded, hasApiKey, isResuming, router]);
 
-  // Sync user record when authenticated
+  // Sync user record when authenticated in Convex
   useEffect(() => {
     if (isAuthenticated) {
       getOrCreateUser()
@@ -118,7 +135,7 @@ function AppNavigation() {
   }, [isAuthenticated, getOrCreateUser]);
 
   // Show loading during initial load
-  if (isLoading) {
+  if (!isClerkLoaded || !settingsLoaded) {
     return (
       <View
         style={{
@@ -145,12 +162,17 @@ function AppNavigation() {
           headerStyle: { backgroundColor: "#0f1419" },
           headerTintColor: "#fff",
           headerTitleStyle: { fontWeight: "bold" },
+          contentStyle: { backgroundColor: "#0f1419" },
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="(auth)/login"
           options={{ headerShown: false, presentation: "modal" }}
+        />
+        <Stack.Screen
+          name="(auth)/setup-api-key"
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
       </Stack>
@@ -250,21 +272,74 @@ function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
+    <SafeAreaProvider style={{ flex: 1, backgroundColor: "#0f1419" }}>
       <ClerkProvider
         publishableKey={Config.clerkPublishableKey}
         tokenCache={tokenCache}
       >
         <ClerkLoaded>
           <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-            <ErrorBoundary>
+            <AppErrorBoundary>
               <StatusBar style="light" />
               <AppNavigation />
-            </ErrorBoundary>
+            </AppErrorBoundary>
           </ConvexProviderWithClerk>
         </ClerkLoaded>
       </ClerkProvider>
     </SafeAreaProvider>
+  );
+}
+
+// Custom functional ErrorBoundary matching Expo Router specs
+import { TouchableOpacity as RNTouchableOpacity } from "react-native";
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: "#0f1419", justifyContent: "center", alignItems: "center", padding: 24 }}>
+      <View
+        style={{
+          backgroundColor: "#15202b",
+          padding: 24,
+          borderRadius: 24,
+          alignItems: "center",
+          borderWidth: 1,
+          borderColor: "#38444d",
+          width: "100%",
+          maxWidth: 400,
+        }}
+      >
+        <AlertTriangle size={64} color="#dc2626" />
+        <Text style={{ fontSize: 24, fontWeight: "bold", color: "#fff", marginTop: 24, textAlign: "center" }}>
+          UI Render Crash
+        </Text>
+        <Text style={{ color: "#8899a6", textAlign: "center", marginTop: 12, fontSize: 16 }}>
+          The LLM Council encountered an unexpected interface error.
+        </Text>
+
+        <View style={{ marginTop: 24, backgroundColor: "#192734", padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#38444d", width: "100%" }}>
+          <Text style={{ color: "#f43f5e", fontSize: 12, fontFamily: "monospace" }} numberOfLines={6}>
+            {error.toString()}
+          </Text>
+        </View>
+
+        <RNTouchableOpacity
+          style={{
+            marginTop: 32,
+            backgroundColor: "#20c997",
+            paddingVertical: 16,
+            paddingHorizontal: 24,
+            borderRadius: 9999,
+            width: "100%",
+            alignItems: "center",
+          }}
+          onPress={retry}
+          activeOpacity={0.8}
+        >
+          <Text style={{ color: "#0f1419", fontWeight: "bold", fontSize: 18 }}>
+            Retry Rendering
+          </Text>
+        </RNTouchableOpacity>
+      </View>
+    </View>
   );
 }
 

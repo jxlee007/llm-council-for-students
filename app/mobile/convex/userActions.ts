@@ -28,6 +28,8 @@ export const saveApiKeySecure = action({
         await ctx.runMutation(internal.users.storeEncryptedApiKey, {
             clerkId: identity.subject,
             encryptedKey,
+            email: identity.email || "",
+            name: identity.name || "",
         });
 
         return { success: true };

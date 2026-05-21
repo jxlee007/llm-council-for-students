@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   ActivityIndicator,
   TextInput,
+  Alert,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -40,6 +41,7 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
     setActivePresetId,
     customSystemPrompts,
     updateCustomSystemPrompt,
+    hasApiKey,
   } = useUIStore();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
@@ -57,7 +59,7 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
       opacity.value = withTiming(1, { duration: 200 });
 
       // Fetch models if not already loaded or cache expired
-      if (!isLoadingModels) {
+      if (!isLoadingModels && hasApiKey) {
         setIsLoadingModels(true);
         fetchModelsIfNeeded()
           .finally(() => setIsLoadingModels(false));
@@ -83,6 +85,14 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
   }));
 
   const handleSelectPreset = (key: string) => {
+    if (!hasApiKey) {
+      Alert.alert(
+        "API Key Required",
+        "Please configure your OpenRouter API key in settings to load available models and presets.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
     if (availableModels.length === 0) return;
     
     const generated = generateDynamicPreset(key, availableModels);

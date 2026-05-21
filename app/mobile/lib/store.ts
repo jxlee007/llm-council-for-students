@@ -47,6 +47,7 @@ const secureStorage = {
 interface UIState {
   // Settings (persisted locally)
   hasApiKey: boolean;
+  settingsLoaded: boolean;
   councilModels: string[];
   chairmanModel: string | null;
   activePresetId: string | null;
@@ -85,6 +86,7 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   // Initial state
   hasApiKey: false,
+  settingsLoaded: false,
   councilModels: [],
   chairmanModel: null,
   activePresetId: null,
@@ -97,8 +99,14 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   // Fetch models with 60s cache
   fetchModelsIfNeeded: async () => {
-    const { availableModels, modelsLastFetched } = get();
+    const { availableModels, modelsLastFetched, hasApiKey } = get();
     const now = Date.now();
+    
+    // Guard against fetching if API key is not configured
+    if (!hasApiKey) {
+      console.log('[Store] Fetch blocked: API key not configured.');
+      return [];
+    }
     
     // Check if cache is still valid (60s)
     if (availableModels.length > 0 && (now - modelsLastFetched) < 60000) {
@@ -138,19 +146,21 @@ export const useUIStore = create<UIState>((set, get) => ({
         loadedPrompts = JSON.parse(promptData);
       }
 
+      // Check API key
+      const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
+
       set({
         councilModels: loadedCouncil,
         chairmanModel: loadedChairman,
         activePresetId: loadedPreset,
-        customSystemPrompts: loadedPrompts
+        customSystemPrompts: loadedPrompts,
+        hasApiKey: !!key,
+        settingsLoaded: true
       });
-
-      // Check API key
-      const key = await secureStorage.getItem(API_KEY_SECURE_KEY);
-      set({ hasApiKey: !!key });
 
     } catch (error) {
       console.error('Failed to load settings:', error);
+      set({ settingsLoaded: true });
     }
   },
 

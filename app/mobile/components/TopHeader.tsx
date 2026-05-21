@@ -40,7 +40,7 @@ export default function TopHeader(props: any) {
 
   return (
     <View
-      className="flex-row items-center justify-between px-4 mt-5 pb-3 bg-[#0f1419] z-50"
+      className="flex-row items-center justify-between px-4 pb-3 bg-[#0f1419] z-50"
       style={{ paddingTop: insets.top }}
     >
       {/* Left Action - Hidden on History */}

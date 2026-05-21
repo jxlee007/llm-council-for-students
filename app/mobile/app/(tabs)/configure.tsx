@@ -9,13 +9,15 @@ import {
   TextInput,
   Switch,
 } from "react-native";
-import { Crown, Check, CheckCircle, Trash2 } from "lucide-react-native";
+import { Crown, Check, CheckCircle, Trash2, Key } from "lucide-react-native";
 import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { AnimatedButton } from "../../components/AnimatedButton";
 import { useMutation, useQuery, useAction } from "convex/react";
+import * as WebBrowser from "expo-web-browser";
 import { api } from "../../convex/_generated/api";
+import EmptyState from "../../components/EmptyState";
 
 import { PRESETS } from "../../lib/presets";
 
@@ -42,10 +44,15 @@ function ConfigureScreen() {
   const clearApiKeyInDB = useMutation(api.users.clearApiKey);
 
   useEffect(() => {
-    loadModels();
-  }, []);
+    if (hasApiKeyInDB) {
+      loadModels();
+    } else {
+      setAvailableModels([]);
+    }
+  }, [hasApiKeyInDB]);
 
   const loadModels = async () => {
+    if (!hasApiKeyInDB) return;
     setIsLoading(true);
     try {
       const models = await getFreeModels();
@@ -137,7 +144,14 @@ function ConfigureScreen() {
                 OpenRouter API Key
               </Text>
               <Text className="text-sm text-muted-foreground mt-1">
-                Bring your own key for unlimited free usage
+                Bring your own key from{" "}
+                <Text
+                  className="text-primary underline font-medium"
+                  onPress={() => WebBrowser.openBrowserAsync("https://openrouter.ai/workspaces/default/keys")}
+                >
+                  openrouter.ai
+                </Text>{" "}
+                for unlimited free usage
               </Text>
             </View>
 
@@ -220,14 +234,11 @@ function ConfigureScreen() {
           </View>
 
           {!hasApiKeyInDB ? (
-            <View className="bg-card rounded-xl border border-border p-8 items-center">
-              <Text className="text-muted-foreground text-center text-sm mb-2">
-                🔑 API Key Required
-              </Text>
-              <Text className="text-muted-foreground text-center text-xs">
-                Add your OpenRouter API key above to view available free models
-              </Text>
-            </View>
+            <EmptyState
+              icon={Key}
+              title="API Key Required"
+              description="Add your OpenRouter API key above to view available free models."
+            />
           ) : isLoading ? (
             <ActivityIndicator size="large" color="#6366f1" />
           ) : (

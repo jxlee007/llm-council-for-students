@@ -11,7 +11,7 @@ import {
 import { useOAuth } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
+import * as Linking from "expo-linking";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Chrome, Apple, Cpu } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -47,10 +47,10 @@ export default function LoginScreen() {
       
       const startFlow = strategy === "oauth_google" ? startGoogleFlow : startAppleFlow;
       
-      // CRITICAL: Use native scheme for Expo Go in development
-      // In production builds, the custom scheme will be used instead
-      const redirectUrl = AuthSession.makeRedirectUri({
-        native: "llm-council://",
+      // Use Linking.createURL to dynamically compute callback URL using the app's registered custom scheme.
+      // The registered scheme in app.config.ts is 'llm-council'.
+      const redirectUrl = Linking.createURL("/oauth-callback", {
+        scheme: "llm-council",
       });
       console.log("Using redirect URL:", redirectUrl);
       

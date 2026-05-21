@@ -86,7 +86,7 @@ export function initLogger() {
         enableNativeFramesTracking: !isRunningInExpoGo(),
 
         // Data scrubbing - remove sensitive information before sending
-        beforeSend(event: Sentry.Event) {
+        beforeSend(event: any) {
           // Scrub request headers
           if (event.request?.headers) {
             for (const header of SENSITIVE_HEADERS) {
@@ -235,3 +235,53 @@ export function setTag(key: string, value: string) {
  * Wrap the root component for Sentry instrumentation.
  */
 export const sentryWrap = Sentry.wrap;
+
+/**
+ * Metrics tracking helpers for Sentry.
+ */
+export const metrics = {
+  /**
+   * Track a counter metric.
+   */
+  count(name: string, value: number, options?: { unit?: string; attributes?: Record<string, string> }) {
+    if (isSentryInitialized && 'metrics' in Sentry) {
+      try {
+        (Sentry as any).metrics.count(name, value, options);
+      } catch (err) {
+        console.warn("[Logger] Sentry metrics.count failed:", err);
+      }
+    } else {
+      console.log(`[Metric Count] ${name}: ${value}`, options);
+    }
+  },
+
+  /**
+   * Track a gauge metric.
+   */
+  gauge(name: string, value: number, options?: { unit?: string; attributes?: Record<string, string> }) {
+    if (isSentryInitialized && 'metrics' in Sentry) {
+      try {
+        (Sentry as any).metrics.gauge(name, value, options);
+      } catch (err) {
+        console.warn("[Logger] Sentry metrics.gauge failed:", err);
+      }
+    } else {
+      console.log(`[Metric Gauge] ${name}: ${value}`, options);
+    }
+  },
+
+  /**
+   * Track a distribution metric.
+   */
+  distribution(name: string, value: number, options?: { unit?: string; attributes?: Record<string, string> }) {
+    if (isSentryInitialized && 'metrics' in Sentry) {
+      try {
+        (Sentry as any).metrics.distribution(name, value, options);
+      } catch (err) {
+        console.warn("[Logger] Sentry metrics.distribution failed:", err);
+      }
+    } else {
+      console.log(`[Metric Distribution] ${name}: ${value}`, options);
+    }
+  }
+};

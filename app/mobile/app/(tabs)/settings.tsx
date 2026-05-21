@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
-import { Lightbulb, Info, LogOut, User } from "lucide-react-native";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { Lightbulb, Info, LogOut, User, Shield } from "lucide-react-native";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
+import { metrics } from "../../lib/logger";
 
 /**
  * Settings screen for app configuration.
@@ -12,6 +13,39 @@ export default function SettingsScreen() {
   const { signOut, isSignedIn } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+
+  const [isSendingMetrics, setIsSendingMetrics] = useState(false);
+
+  const handleSendTestMetrics = () => {
+    setIsSendingMetrics(true);
+    try {
+      // Counter metric
+      metrics.count('button_click', 1);
+
+      // Gauge metric
+      metrics.gauge('queue_depth', 42);
+
+      // Distribution metric with unit
+      metrics.distribution('response_time', 187.5, {
+        unit: 'millisecond',
+      });
+
+      // Counter with unit and attributes
+      metrics.count('network_request', 1, {
+        unit: 'request',
+        attributes: {
+          endpoint: '/api/users',
+          method: 'POST',
+        },
+      });
+
+      Alert.alert("Success", "Test metrics dispatched to Sentry SDK!");
+    } catch (error) {
+      Alert.alert("Error", `Failed to send metrics: ${error}`);
+    } finally {
+      setIsSendingMetrics(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert("Sign Out", "Are you sure you want to sign out?", [
@@ -103,12 +137,42 @@ export default function SettingsScreen() {
         </View>
       </View>
 
+      {/* Diagnostics Section */}
+      <View className="mt-6 mx-4">
+        <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+          Diagnostics & Testing
+        </Text>
+        <View className="bg-card rounded-xl border border-border p-4">
+          <View className="flex-row items-center mb-1">
+            <Shield size={18} color="#6366f1" className="mr-2" />
+            <Text className="text-base font-semibold text-foreground">
+              Sentry Metrics Verification
+            </Text>
+          </View>
+          <Text className="text-sm text-muted-foreground mb-4">
+            Send test counter, gauge, and distribution metrics to verify your Sentry configuration.
+          </Text>
+          <TouchableOpacity
+            onPress={handleSendTestMetrics}
+            disabled={isSendingMetrics}
+            className="bg-indigo-500/10 py-3 rounded-lg flex-row items-center justify-center border border-indigo-500/20 active:bg-indigo-500/20"
+          >
+            {isSendingMetrics ? (
+              <ActivityIndicator size="small" color="#6366f1" className="mr-2" />
+            ) : null}
+            <Text className="text-indigo-600 font-semibold">
+              {isSendingMetrics ? "Sending Metrics..." : "Send Test Metrics"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Info Banner */}
       <View className="mx-4 mt-6 bg-primary/10 rounded-xl p-4 border border-primary/30 flex-row">
         <Lightbulb size={20} color="#6366f1" className="mr-3 mt-0.5" />
         <Text className="text-sm text-foreground flex-1">
           <Text className="font-semibold">Tip:</Text> Add your OpenRouter API
-          key to use premium models and get unlimited queries!
+          key to use free ai models available
         </Text>
       </View>
     </View>

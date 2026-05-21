@@ -460,5 +460,14 @@ async def extract_file_text(
 
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    
+    port = int(os.environ.get("PORT", 8000))
+    reload = os.environ.get("APP_ENV", "development") != "production"
+    
+    # In reload mode, uvicorn requires the import string representation of the app
+    app_target = "backend.main:app" if reload else app
+    
+    uvicorn.run(app_target, host="0.0.0.0", port=port, reload=reload)
+

@@ -11,7 +11,7 @@ export const Config = {
   appVariant: (process.env.EXPO_PUBLIC_APP_VARIANT || "development") as "development" | "preview" | "production",
 
   // Optional configuration
-  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || "",
+  sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN || "https://09fb75f6abdb2ea9735b82bfe6833b8f@o4510163824345088.ingest.de.sentry.io/4510721046020176",
 
   // Derived flags
   isProduction: process.env.EXPO_PUBLIC_APP_VARIANT === "production",
