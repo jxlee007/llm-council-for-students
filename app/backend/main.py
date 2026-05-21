@@ -466,8 +466,7 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     reload = os.environ.get("APP_ENV", "development") != "production"
     
-    # In reload mode, uvicorn requires the import string representation of the app
-    app_target = "backend.main:app" if reload else app
+    app_target = "backend.main:app"
     
     uvicorn.run(app_target, host="0.0.0.0", port=port, reload=reload)
 
