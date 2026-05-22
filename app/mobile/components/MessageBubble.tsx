@@ -6,11 +6,12 @@ import {
   TouchableOpacity,
   useWindowDimensions,
 } from "react-native";
-import { Bot } from "lucide-react-native";
+import { Bot, Copy, Check } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
 import CouncilResponse from "./CouncilResponse";
-import React from "react";
+import React, { useState } from "react";
 import { FileChip } from "./FileChip";
+import * as Clipboard from "expo-clipboard";
 
 interface MessageBubbleProps {
   message: Message & {
@@ -34,6 +35,14 @@ function MessageBubble({
   onRetryTrigger,
 }: MessageBubbleProps) {
   const { width } = useWindowDimensions();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (text: string) => {
+    if (!text) return;
+    await Clipboard.setStringAsync(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   if (message.role === "user") {
     // Check for attachments (enriched via backend)
@@ -93,13 +102,33 @@ function MessageBubble({
 
         {/* Render text bubble if content exists or if no image (placeholder) */}
         {(message.content || !imageUri) && (
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", maxWidth: "85%" }}>
+            <TouchableOpacity
+              onPress={() => handleCopy(message.content || "")}
+              style={{
+                marginRight: 8,
+                padding: 8,
+                borderRadius: 20,
+                backgroundColor: "rgba(255,255,255,0.06)",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
+              activeOpacity={0.7}
+            >
+              {copied ? (
+                <Check size={14} color="#34d399" />
+              ) : (
+                <Copy size={14} color="#94a3b8" />
+              )}
+            </TouchableOpacity>
+
             <View
                 style={{
                     backgroundColor: isFailed ? "#fee2e2" : "#2ecc71", // Light red if failed, Green if normal
                     borderRadius: 18,
                     borderTopRightRadius: 0,
                     padding: 12,
-                    maxWidth: "85%",
+                    flexShrink: 1,
                     borderWidth: isFailed ? 1 : 0,
                     borderColor: "#fca5a5",
                 }}
@@ -108,6 +137,7 @@ function MessageBubble({
                 {message.content}
               </Text>
             </View>
+          </View>
         )}
 
         {isFailed && onRetryTrigger && (
@@ -185,14 +215,49 @@ function MessageBubble({
     );
   }
 
+  const getAssistantCopyText = () => {
+    if (assistantMessage.stage3?.response) {
+      return assistantMessage.stage3.response;
+    }
+    if (assistantMessage.stage1 && assistantMessage.stage1.length > 0) {
+      return assistantMessage.stage1.map(s => `[${s.model}]: ${s.response}`).join("\n\n");
+    }
+    return "";
+  };
+
+  const copyText = getAssistantCopyText();
+
   return (
-    <View className="mb-4">
-      <CouncilResponse
-        stage1={assistantMessage.stage1}
-        stage2={assistantMessage.stage2}
-        stage3={assistantMessage.stage3}
-        aggregateRankings={aggregateRankings}
-      />
+    <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 16 }}>
+      <View style={{ flex: 1 }}>
+        <CouncilResponse
+          stage1={assistantMessage.stage1}
+          stage2={assistantMessage.stage2}
+          stage3={assistantMessage.stage3}
+          aggregateRankings={aggregateRankings}
+        />
+      </View>
+      {copyText ? (
+        <TouchableOpacity
+          onPress={() => handleCopy(copyText)}
+          style={{
+            marginLeft: 8,
+            padding: 8,
+            borderRadius: 20,
+            backgroundColor: "rgba(255,255,255,0.06)",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.1)",
+            marginBottom: 8,
+          }}
+          activeOpacity={0.7}
+        >
+          {copied ? (
+            <Check size={14} color="#34d399" />
+          ) : (
+            <Copy size={14} color="#94a3b8" />
+          )}
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }

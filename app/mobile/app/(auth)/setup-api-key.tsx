@@ -10,19 +10,21 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useClerk } from "@clerk/clerk-expo";
 import { useAction } from "convex/react";
 import * as WebBrowser from "expo-web-browser";
 import { api } from "../../convex/_generated/api";
 import { useUIStore } from "../../lib/store";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Key, Eye, EyeOff, LogOut, Cpu } from "lucide-react-native";
+import { useRouter } from "expo-router";
 
 export default function SetupApiKeyScreen() {
-  const { signOut } = useAuth();
+  const { signOut } = useClerk();
   const insets = useSafeAreaInsets();
   const { saveApiKey } = useUIStore();
   const saveApiKeySecure = useAction(api.userActions.saveApiKeySecure);
+  const router = useRouter();
 
   const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
@@ -61,8 +63,11 @@ export default function SetupApiKeyScreen() {
           setIsSigningOut(true);
           try {
             await signOut();
+            await useUIStore.getState().clearApiKey();
+            router.replace("/(auth)/login");
           } catch (error) {
             console.error("[Setup API Key] Sign out failed:", error);
+            Alert.alert("Error", "Failed to sign out. Please check your network and try again.");
           } finally {
             setIsSigningOut(false);
           }

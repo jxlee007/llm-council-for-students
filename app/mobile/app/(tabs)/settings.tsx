@@ -1,16 +1,18 @@
 import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Lightbulb, Info, LogOut, User, Shield } from "lucide-react-native";
-import { useAuth, useUser } from "@clerk/clerk-expo";
+import { useAuth, useUser, useClerk } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { metrics } from "../../lib/logger";
+import { useUIStore } from "../../lib/store";
 
 /**
  * Settings screen for app configuration.
  * Includes Authentication, BYOK API key management and other preferences.
  */
 export default function SettingsScreen() {
-  const { signOut, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const { isSignedIn } = useAuth();
   const { user } = useUser();
   const router = useRouter();
 
@@ -54,7 +56,14 @@ export default function SettingsScreen() {
         text: "Sign Out",
         style: "destructive",
         onPress: async () => {
-          await signOut();
+          try {
+            await signOut();
+            await useUIStore.getState().clearApiKey();
+            router.replace("/(auth)/login");
+          } catch (error) {
+            console.error("Sign out failed:", error);
+            Alert.alert("Error", "Failed to sign out. Please check your network and try again.");
+          }
         },
       },
     ]);
