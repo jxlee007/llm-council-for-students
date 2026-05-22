@@ -34,7 +34,6 @@ The app processes every query through a unique 3-stage pipeline:
 
 ### Other Features
 - 🔑 **Bring Your Own Key** — connect your OpenRouter API key for access to 50+ free models
-- 📸 **On-Device Vision** — attach images to your query; Qwen vision model runs locally on-device
 - 🗂️ **Chat History** — full conversation persistence via Convex
 - ⚙️ **Configure Council** — pick which models form your council
 - 🎨 **Micro-interaction Animations** — smooth transitions and loading states throughout
