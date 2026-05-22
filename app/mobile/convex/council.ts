@@ -1,12 +1,12 @@
 "use node";
 
 import { action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 import { v } from "convex/values";
 import { decryptApiKey } from "./encryption";
 
-const API_BASE_URL = process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001";
-const CONNECTION_TIMEOUT_MS = 30000; // 30s to establish connection
+const API_BASE_URL = process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || "https://llm-council-for-students.onrender.com";
+const CONNECTION_TIMEOUT_MS = 90000; // 90s to establish connection (handles Render free tier cold starts)
 const STREAM_TIMEOUT_MS = 180000; // 3 minutes max for full stream
 
 /**
@@ -83,7 +83,7 @@ export const runCouncil = action({
             )
         ),
     },
-    handler: async (ctx, args) => {
+    handler: async (ctx, args): Promise<{ success: boolean; messageId?: any; error?: string }> => {
         const identity = await ctx.auth.getUserIdentity();
         if (!identity) {
             throw new Error("Unauthorized");
@@ -98,7 +98,7 @@ export const runCouncil = action({
         });
 
         // 0. Fetch prior messages before we insert new ones
-        const priorMessages = await ctx.runQuery(internal.messages.list, { conversationId: args.conversationId });
+        const priorMessages = await ctx.runQuery(api.messages.list, { conversationId: args.conversationId });
 
         // 1. Create user message
         const type = args.imageBase64 ? (args.content ? "image_text" : "image") : "text";

@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001";
+const API_BASE_URL = process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_URL || "https://llm-council-for-students.onrender.com";
 
 /**
  * Proxy action to send message to Python Backend without exposing API Key.

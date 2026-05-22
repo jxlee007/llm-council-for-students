@@ -11,6 +11,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   Easing,
+  runOnJS,
 } from "react-native-reanimated";
 import { Camera, Image, FileText } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -37,9 +38,11 @@ export function AttachmentModal({
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(300);
   const opacity = useSharedValue(0);
+  const [shouldRender, setShouldRender] = React.useState(visible);
 
   React.useEffect(() => {
     if (visible) {
+      setShouldRender(true);
       translateY.value = withTiming(0, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -50,7 +53,11 @@ export function AttachmentModal({
         duration: 250,
         easing: Easing.in(Easing.cubic),
       });
-      opacity.value = withTiming(0, { duration: 200 });
+      opacity.value = withTiming(0, { duration: 200 }, (finished) => {
+        if (finished) {
+          runOnJS(setShouldRender)(false);
+        }
+      });
     }
   }, [visible]);
 
@@ -62,7 +69,7 @@ export function AttachmentModal({
     transform: [{ translateY: translateY.value }],
   }));
 
-  if (!visible && opacity.value === 0) return null;
+  if (!shouldRender) return null;
 
   return (
     <Modal transparent visible={visible} onRequestClose={onClose}>

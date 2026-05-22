@@ -19,6 +19,7 @@
       "env": {
         "APP_ENV": "preview",
         "EXPO_PUBLIC_APP_VARIANT": "preview",
+        "EXPO_PUBLIC_API_URL": "https://llm-council-for-students.onrender.com",
         "EXPO_PUBLIC_SENTRY_DSN": "https://09fb75f6abdb2ea9735b82bfe6833b8f@o4510163824345088.ingest.de.sentry.io/4510721046020176",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
@@ -34,6 +35,7 @@
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_APP_VARIANT": "production",
+        "EXPO_PUBLIC_API_URL": "https://llm-council-for-students.onrender.com",
         "EXPO_PUBLIC_SENTRY_DSN": "https://09fb75f6abdb2ea9735b82bfe6833b8f@o4510163824345088.ingest.de.sentry.io/4510721046020176",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"

@@ -13,9 +13,13 @@ import React from "react";
 import { FileChip } from "./FileChip";
 
 interface MessageBubbleProps {
-  message: Message;
+  message: Message & {
+    status?: "loading" | "success" | "failed";
+    errorDetails?: string;
+  };
   aggregateRankings?: AggregateRanking[];
   onImagePress?: (base64: string) => void;
+  onRetryTrigger?: (originalPrompt: string, failedMessageId: string) => void;
 }
 
 /**
@@ -27,6 +31,7 @@ function MessageBubble({
   message,
   aggregateRankings,
   onImagePress,
+  onRetryTrigger,
 }: MessageBubbleProps) {
   const { width } = useWindowDimensions();
 
@@ -45,6 +50,7 @@ function MessageBubble({
     // Styles from requirements
     // Image bubble: width min(80% screen, 280px), max-height 250px, radius 12, margin-bottom 6
     const imageWidth = Math.min(width * 0.8, 280);
+    const isFailed = message.status === "failed";
 
     return (
       <View className="items-end mb-4">
@@ -70,7 +76,7 @@ function MessageBubble({
               borderRadius: 12,
               overflow: 'hidden',
               borderWidth: 1,
-              borderColor: '#e5e7eb', // border-border
+              borderColor: isFailed ? '#fca5a5' : '#e5e7eb', // error border or regular border
               width: imageWidth,
             }}
           >
@@ -89,28 +95,56 @@ function MessageBubble({
         {(message.content || !imageUri) && (
             <View
                 style={{
-                    backgroundColor: "#2ecc71", // Green requirement
+                    backgroundColor: isFailed ? "#fee2e2" : "#2ecc71", // Light red if failed, Green if normal
                     borderRadius: 18,
                     borderTopRightRadius: 0,
                     padding: 12,
                     maxWidth: "85%",
+                    borderWidth: isFailed ? 1 : 0,
+                    borderColor: "#fca5a5",
                 }}
             >
-              <Text style={{ color: "#ffffff", fontSize: 16, lineHeight: 24 }}>
+              <Text style={{ color: isFailed ? "#ef4444" : "#ffffff", fontSize: 16, lineHeight: 24 }}>
                 {message.content}
               </Text>
             </View>
+        )}
+
+        {isFailed && onRetryTrigger && (
+          <TouchableOpacity
+            onPress={() =>
+              onRetryTrigger(
+                message.errorDetails || message.content || "",
+                (message as any)._id || ""
+              )
+            }
+            style={{ marginTop: 6, marginRight: 4, flexDirection: "row", alignItems: "center" }}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: "#ef4444", fontSize: 13, fontWeight: "600" }}>
+              ⚠️ Connection failed. Tap to Retry Request
+            </Text>
+          </TouchableOpacity>
         )}
       </View>
     );
   }
 
   // Assistant message with council response
-  const assistantMessage = message as AssistantMessage;
+  const assistantMessage = message as AssistantMessage & {
+    status?: "loading" | "success" | "failed";
+    error?: string;
+    errorDetails?: string;
+    _id?: string;
+  };
+
+  // Check failed state
+  const isFailed = assistantMessage.status === "failed" || !!assistantMessage.error;
 
   // Check if this is a pending/loading message
   const isLoading =
-    !assistantMessage.stage1 || assistantMessage.stage1.length === 0;
+    assistantMessage.status === "loading" ||
+    (!isFailed && (!assistantMessage.stage1 || assistantMessage.stage1.length === 0));
 
   if (isLoading) {
     return (
@@ -121,6 +155,30 @@ function MessageBubble({
           </View>
           <Text className="text-muted-foreground text-sm font-medium">
             Consulting council members...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (isFailed) {
+    const errorBubbleMsg = assistantMessage.content || "Sorry, I encountered a temporary connection issue while consulting the council. Please check your network or try again.";
+    
+    return (
+      <View className="items-start mb-4">
+        <View
+          style={{
+            backgroundColor: "#fee2e2", // Light red/pinkish background
+            borderRadius: 18,
+            borderTopLeftRadius: 0,
+            padding: 12,
+            maxWidth: "85%",
+            borderWidth: 1,
+            borderColor: "#fca5a5", // Light red border
+          }}
+        >
+          <Text style={{ color: "#ef4444", fontSize: 15, lineHeight: 22 }}>
+            {errorBubbleMsg}
           </Text>
         </View>
       </View>

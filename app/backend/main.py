@@ -28,10 +28,9 @@ from .errors import CouncilException, APIError, ErrorCode
 
 app = FastAPI(title="LLM Council API", version="1.0.0")
 
-# CORS configuration - restrict in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Restrict to specific origins in production
+    allow_origin_regex="https?://.*",  # Allows all HTTP/HTTPS origins dynamically with credentials
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -463,7 +462,7 @@ if __name__ == "__main__":
     import os
     import uvicorn
     
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8001))
     reload = os.environ.get("APP_ENV", "development") != "production"
     
     app_target = "backend.main:app"

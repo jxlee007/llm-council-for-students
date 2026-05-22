@@ -64,6 +64,7 @@ export interface UserMessage {
 /** Assistant message with 3-stage council response */
 export interface AssistantMessage {
     role: 'assistant';
+    content?: string;
     stage1: Stage1Response[];
     stage2: Stage2Response[];
     stage3: Stage3Response;

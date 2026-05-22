@@ -7,7 +7,11 @@ export const Config = {
   // Core configuration
   clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
   convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL || "",
-  apiUrl: process.env.EXPO_PUBLIC_API_URL || "http://localhost:8001",
+  apiUrl: process.env.EXPO_PUBLIC_API_URL || (
+    process.env.EXPO_PUBLIC_APP_VARIANT === "production" || process.env.EXPO_PUBLIC_APP_VARIANT === "preview"
+      ? "https://llm-council-for-students.onrender.com"
+      : "http://localhost:8001"
+  ),
   appVariant: (process.env.EXPO_PUBLIC_APP_VARIANT || "development") as "development" | "preview" | "production",
 
   // Optional configuration

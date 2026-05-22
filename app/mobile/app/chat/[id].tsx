@@ -35,6 +35,7 @@ function ChatScreen() {
   const messages = useQuery(api.messages.list, { conversationId });
   const runCouncil = useAction(api.council.runCouncil);
   const createAttachment = useMutation(api.attachments.create);
+  const deleteMessage = useMutation(api.messages.remove);
 
   const {
     councilModels,
@@ -55,11 +56,58 @@ function ChatScreen() {
   } | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [showPresets, setShowPresets] = useState(false);
+  const [messagesList, setMessagesList] = useState<any[]>([]);
+  const [failedUserMessages, setFailedUserMessages] = useState<Record<string, {
+    prompt: string;
+    attachment?: ExtractedFile;
+    image?: ExtractedImage;
+  }>>({});
   const hasProcessedInitialMessage = useRef(false);
 
-  // Derive processing state from messages
-  const processingMessage = messages?.find(
-    (m: any) => m.role === "assistant" && m.processing === true,
+  // Sync messages from Convex to local messagesList state with status metadata
+  useEffect(() => {
+    if (messages !== undefined) {
+      setMessagesList(
+        messages
+          .filter((m: any) => {
+            // Filter out the assistant placeholder/error message if the preceding user message failed
+            if (m.role === "assistant" && (m.error || m.processing)) {
+              const idx = messages.findIndex((msg: any) => msg._id === m._id);
+              if (idx > 0) {
+                const prevMsg = messages[idx - 1];
+                if (prevMsg && prevMsg.role === "user" && failedUserMessages[prevMsg._id]) {
+                  return false;
+                }
+              }
+            }
+            return true;
+          })
+          .map((m: any) => {
+            // Check if this user message is in our failed state record
+            if (m.role === "user" && failedUserMessages[m._id]) {
+              const failedInfo = failedUserMessages[m._id];
+              return {
+                ...m,
+                status: "failed",
+                errorDetails: failedInfo.prompt,
+                failedAttachment: failedInfo.attachment,
+                failedImage: failedInfo.image,
+              };
+            }
+            // Normal sync
+            return {
+              ...m,
+              status: m.error ? "failed" : m.processing ? "loading" : "success",
+              errorDetails: m.error || undefined,
+            };
+          })
+      );
+    }
+  }, [messages, failedUserMessages]);
+
+  // Derive processing state from messagesList
+  const processingMessage = messagesList?.find(
+    (m: any) => m.role === "assistant" && m.status === "loading",
   );
   const isProcessing = !!processingMessage;
 
@@ -78,12 +126,12 @@ function ChatScreen() {
 
   // Scroll to bottom when messages update
   useEffect(() => {
-    if (flatListRef.current && messages?.length) {
+    if (flatListRef.current && messagesList?.length) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages?.length, processingMessage?.stage1, processingMessage?.stage2]);
+  }, [messagesList?.length, processingMessage?.stage1, processingMessage?.stage2]);
 
   // Process initial message from Home screen on mount
   useEffect(() => {
@@ -206,7 +254,6 @@ function ChatScreen() {
         // Pass image info for vision processing
         imageBase64: image?.base64,
         imageMimeType: image?.type,
-        attachmentType,
         systemPrompt,
         history: rawHistory,
       });
@@ -214,17 +261,81 @@ function ChatScreen() {
       console.log("[ChatScreen] runCouncil result:", result);
 
       if (!result.success) {
-        setError(result.error || "Council processing failed");
+        throw new Error(result.error || "Council processing failed");
       }
     } catch (err: any) {
       console.error("Failed to process message:", err);
       setError(err.message || "Council connection failed");
+      
+      // 1. Delete the assistant placeholder/error message from Convex DB
+      if (messages) {
+        const lastAssistantMsg = [...messages].reverse().find((m: any) => m.role === "assistant");
+        if (lastAssistantMsg && (lastAssistantMsg.processing || lastAssistantMsg.error)) {
+          try {
+            await deleteMessage({ id: lastAssistantMsg._id });
+          } catch (deleteErr) {
+            console.error("Failed to delete assistant placeholder:", deleteErr);
+          }
+        }
+      }
+
+      // 2. Mark the corresponding user message as failed
+      if (messages) {
+        const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
+        if (lastUserMsg) {
+          setFailedUserMessages(prev => ({
+            ...prev,
+            [lastUserMsg._id]: {
+              prompt: content,
+              attachment,
+              image,
+            }
+          }));
+        }
+      }
+
       setCanRetry(true);
       setLastMessage({ content, attachment, image });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleRetryMessage = useCallback(async (originalPrompt: string, failedMessageId: string) => {
+    // Get the cached media attachment/image info
+    const failedInfo = failedUserMessages[failedMessageId];
+    const attachment = failedInfo?.attachment;
+    const image = failedInfo?.image;
+
+    // Clear from failed record
+    setFailedUserMessages(prev => {
+      const copy = { ...prev };
+      delete copy[failedMessageId];
+      return copy;
+    });
+
+    // Remove from local list to instantly update UI
+    setMessagesList(prev => prev.filter(msg => (msg._id || msg.id) !== failedMessageId));
+    
+    // Delete the failed user message from Convex database
+    if (failedMessageId) {
+      try {
+        await deleteMessage({ id: failedMessageId as Id<"messages"> });
+      } catch (err) {
+        console.error("Failed to delete user message:", err);
+      }
+    }
+
+    setError(null);
+    setCanRetry(false);
+    
+    // Automatically re-pass the saved prompt text string back into primary generation request lifecycle smoothly
+    await handleSendMessage(
+      originalPrompt,
+      attachment ? [attachment] : undefined,
+      image ? [image] : undefined
+    );
+  }, [failedUserMessages, deleteMessage]);
 
   const handleRetry = () => {
     if (lastMessage) {
@@ -239,15 +350,16 @@ function ChatScreen() {
   };
 
   const renderMessage = useCallback(
-    ({ item, index }: { item: Message; index: number }) => (
+    ({ item, index }: { item: any; index: number }) => (
       <FadeInView delay={index > 0 ? 0 : 300}>
         <MessageBubble
           message={item}
           onImagePress={(uri: string) => setFullscreenImage(uri)}
+          onRetryTrigger={handleRetryMessage}
         />
       </FadeInView>
     ),
-    [],
+    [handleRetryMessage],
   );
 
   if (conversation === undefined || messages === undefined) {
@@ -290,8 +402,8 @@ function ChatScreen() {
 
         <FlatList
           ref={flatListRef}
-          data={messages as Message[]}
-          keyExtractor={(item) => (item as any)._id}
+          data={messagesList}
+          keyExtractor={(item) => (item as any)._id || (item as any).id || String(Math.random())}
           renderItem={renderMessage}
           contentContainerStyle={{
             padding: 16,

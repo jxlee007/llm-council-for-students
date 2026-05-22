@@ -153,3 +153,29 @@ export const addAssistantResponse = mutation({
     return messageId;
   },
 });
+
+// Delete a message by ID (for retrying failed messages)
+export const remove = mutation({
+  args: { id: v.id("messages") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const message = await ctx.db.get(args.id);
+    if (!message) {
+      throw new Error("Message not found");
+    }
+
+    // Verify conversation ownership
+    const conversation = await ctx.db.get(message.conversationId);
+    if (!conversation || conversation.userId !== identity.subject) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.delete(args.id);
+    return { success: true };
+  },
+});
+

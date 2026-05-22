@@ -4,7 +4,7 @@ if __name__ == "__main__":
     import os
     import uvicorn
     
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8001))
     reload = os.environ.get("APP_ENV", "development") != "production"
     
     # 💡 Industry standard: Render sets your Root Directory to 'app', 

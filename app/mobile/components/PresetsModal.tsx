@@ -49,9 +49,11 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
   const [expandedPreset, setExpandedPreset] = useState<string | null>(null);
   const [lastTap, setLastTap] = useState<{ key: string; time: number } | null>(null);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [shouldRender, setShouldRender] = useState(visible);
 
   useEffect(() => {
     if (visible) {
+      setShouldRender(true);
       translateY.value = withTiming(0, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -70,7 +72,11 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
         duration: 250,
         easing: Easing.in(Easing.cubic),
       });
-      opacity.value = withTiming(0, { duration: 200 });
+      opacity.value = withTiming(0, { duration: 200 }, (finished) => {
+        if (finished) {
+          runOnJS(setShouldRender)(false);
+        }
+      });
       // reset expansion state on close
       setTimeout(() => setExpandedPreset(null), 300);
     }
@@ -124,7 +130,7 @@ export default function PresetsModal({ visible, onClose }: PresetsModalProps) {
     return modelId.split('/').pop()?.replace(':free', '') || modelId;
   };
 
-  if (!visible && opacity.value === 0) return null;
+  if (!shouldRender) return null;
 
   return (
     <View
