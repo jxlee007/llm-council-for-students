@@ -5,13 +5,24 @@ import {
   Image,
   TouchableOpacity,
   useWindowDimensions,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
-import { Bot, Copy, Check } from "lucide-react-native";
+import { Bot, Copy, Check, ChevronDown, ChevronUp, RefreshCw } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
 import CouncilResponse from "./CouncilResponse";
 import React, { useState } from "react";
 import { FileChip } from "./FileChip";
 import * as Clipboard from "expo-clipboard";
+
+// Enable LayoutAnimation for Android
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface MessageBubbleProps {
   message: Message & {
@@ -25,8 +36,8 @@ interface MessageBubbleProps {
 
 /**
  * Message bubble component.
- * User messages: Right-aligned, primary color, rounded-tr-none.
- * Assistant messages: Left-aligned, renders council visualization.
+ * User messages: Right-aligned, sophisticated muted slate-800, rounded-tr-none.
+ * Assistant messages: Left-aligned, renders council visualization or muted error card.
  */
 function MessageBubble({
   message,
@@ -36,12 +47,25 @@ function MessageBubble({
 }: MessageBubbleProps) {
   const { width } = useWindowDimensions();
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showExpandToggle, setShowExpandToggle] = useState(false);
 
   const handleCopy = async (text: string) => {
     if (!text) return;
     await Clipboard.setStringAsync(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsExpanded(!isExpanded);
+  };
+
+  const handleTextLayout = (e: any) => {
+    if (e.nativeEvent.lines.length > 8) {
+      setShowExpandToggle(true);
+    }
   };
 
   if (message.role === "user") {
@@ -62,18 +86,18 @@ function MessageBubble({
     const isFailed = message.status === "failed";
 
     return (
-      <View className="items-end mb-4">
+      <View className="items-end mb-4 w-full">
         {/* Render Attachments */}
         {attachments.length > 0 && (
-            <View className="mb-2 flex-row flex-wrap justify-end gap-2">
-                {attachments.map((file: any, index: number) => (
-                    <FileChip
-                        key={index}
-                        name={file.fileName}
-                        onRemove={() => {}} // No-op for chat history
-                    />
-                ))}
-            </View>
+          <View className="mb-2 flex-row flex-wrap justify-end gap-2">
+            {attachments.map((file: any, index: number) => (
+              <FileChip
+                key={index}
+                name={file.fileName}
+                onRemove={() => {}} // No-op for chat history
+              />
+            ))}
+          </View>
         )}
 
         {imageUri && (
@@ -83,16 +107,16 @@ function MessageBubble({
             style={{
               marginBottom: 6,
               borderRadius: 12,
-              overflow: 'hidden',
+              overflow: "hidden",
               borderWidth: 1,
-              borderColor: isFailed ? '#fca5a5' : '#e5e7eb', // error border or regular border
+              borderColor: "rgba(255, 255, 255, 0.08)",
               width: imageWidth,
             }}
           >
             <Image
               source={{ uri: imageUri }}
               style={{
-                width: '100%',
+                width: "100%",
                 height: 250,
               }}
               resizeMode="cover"
@@ -102,59 +126,94 @@ function MessageBubble({
 
         {/* Render text bubble if content exists or if no image (placeholder) */}
         {(message.content || !imageUri) && (
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", maxWidth: "85%" }}>
-            <TouchableOpacity
-              onPress={() => handleCopy(message.content || "")}
-              style={{
-                marginRight: 8,
-                padding: 8,
-                borderRadius: 20,
-                backgroundColor: "rgba(255,255,255,0.06)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.1)",
-              }}
-              activeOpacity={0.7}
-            >
-              {copied ? (
-                <Check size={14} color="#34d399" />
-              ) : (
-                <Copy size={14} color="#94a3b8" />
-              )}
-            </TouchableOpacity>
-
-            <View
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", maxWidth: "90%", alignSelf: "flex-end" }}>
+            {/* Interactive Retry Icon (renders dynamically OUTSIDE and immediately BESIDE the user bubble) */}
+            {isFailed && onRetryTrigger && (
+              <TouchableOpacity
+                onPress={() =>
+                  onRetryTrigger(
+                    message.errorDetails || message.content || "",
+                    (message as any)._id || ""
+                  )
+                }
                 style={{
-                    backgroundColor: isFailed ? "#fee2e2" : "#2ecc71", // Light red if failed, Green if normal
-                    borderRadius: 18,
-                    borderTopRightRadius: 0,
-                    padding: 12,
-                    flexShrink: 1,
-                    borderWidth: isFailed ? 1 : 0,
-                    borderColor: "#fca5a5",
+                  marginRight: 10,
+                  padding: 8,
+                  borderRadius: 20,
+                  backgroundColor: "rgba(239, 68, 68, 0.08)",
+                  borderWidth: 1,
+                  borderColor: "rgba(239, 68, 68, 0.25)",
                 }}
-            >
-              <Text style={{ color: isFailed ? "#ef4444" : "#ffffff", fontSize: 16, lineHeight: 24 }}>
-                {message.content}
-              </Text>
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <RefreshCw size={14} color="#ef4444" />
+              </TouchableOpacity>
+            )}
+
+            {/* User Bubble Container */}
+            <View style={{ flexShrink: 1, alignItems: "flex-end" }}>
+              <View
+                style={{
+                  backgroundColor: "#1e293b", // Sophisticated muted slate-800 background
+                  borderRadius: 18,
+                  borderTopRightRadius: 0,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: "rgba(255, 255, 255, 0.08)", // Stable, standard neutral border layout
+                }}
+              >
+                <Text
+                  onTextLayout={handleTextLayout}
+                  numberOfLines={isExpanded ? undefined : 8}
+                  style={{
+                    color: "#f8fafc", // High contrast readable light slate
+                    fontSize: 15,
+                    lineHeight: 22,
+                  }}
+                >
+                  {message.content}
+                </Text>
+
+                {/* Chevron Toggle inside bubble */}
+                {showExpandToggle && (
+                  <TouchableOpacity
+                    onPress={toggleExpand}
+                    style={{
+                      alignSelf: "flex-end",
+                      marginTop: 6,
+                      padding: 4,
+                      borderRadius: 12,
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                    }}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    activeOpacity={0.7}
+                  >
+                    {isExpanded ? (
+                      <ChevronUp size={14} color="#94a3b8" />
+                    ) : (
+                      <ChevronDown size={14} color="#94a3b8" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Minimalist low-opacity action row below user bubble */}
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 4, marginRight: 2, opacity: 0.5 }}>
+                <TouchableOpacity
+                  onPress={() => handleCopy(message.content || "")}
+                  style={{ padding: 4 }}
+                  activeOpacity={0.7}
+                >
+                  {copied ? (
+                    <Check size={12} color="#34d399" />
+                  ) : (
+                    <Copy size={12} color="#94a3b8" />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        )}
-
-        {isFailed && onRetryTrigger && (
-          <TouchableOpacity
-            onPress={() =>
-              onRetryTrigger(
-                message.errorDetails || message.content || "",
-                (message as any)._id || ""
-              )
-            }
-            style={{ marginTop: 6, marginRight: 4, flexDirection: "row", alignItems: "center" }}
-            activeOpacity={0.7}
-          >
-            <Text style={{ color: "#ef4444", fontSize: 13, fontWeight: "600" }}>
-              ⚠️ Connection failed. Tap to Retry Request
-            </Text>
-          </TouchableOpacity>
         )}
       </View>
     );
@@ -195,21 +254,36 @@ function MessageBubble({
     const errorBubbleMsg = assistantMessage.content || "Sorry, I encountered a temporary connection issue while consulting the council. Please check your network or try again.";
     
     return (
-      <View className="items-start mb-4">
+      <View className="items-start mb-4 w-full">
         <View
           style={{
-            backgroundColor: "#fee2e2", // Light red/pinkish background
+            backgroundColor: "#181d24", // Muted neutral background
             borderRadius: 18,
             borderTopLeftRadius: 0,
             padding: 12,
             maxWidth: "85%",
             borderWidth: 1,
-            borderColor: "#fca5a5", // Light red border
+            borderColor: "rgba(239, 68, 68, 0.4)", // Thin, clean muted-red border (status indicator)
           }}
         >
-          <Text style={{ color: "#ef4444", fontSize: 15, lineHeight: 22 }}>
+          <Text style={{ color: "#f8fafc", fontSize: 15, lineHeight: 22 }}>
             {errorBubbleMsg}
           </Text>
+        </View>
+
+        {/* Minimalist copy button row below failed AI bubble */}
+        <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 4, marginLeft: 4, opacity: 0.5 }}>
+          <TouchableOpacity
+            onPress={() => handleCopy(errorBubbleMsg)}
+            style={{ padding: 4 }}
+            activeOpacity={0.7}
+          >
+            {copied ? (
+              <Check size={12} color="#34d399" />
+            ) : (
+              <Copy size={12} color="#94a3b8" />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -228,8 +302,8 @@ function MessageBubble({
   const copyText = getAssistantCopyText();
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "flex-end", marginBottom: 16 }}>
-      <View style={{ flex: 1 }}>
+    <View style={{ marginBottom: 16, width: "100%" }}>
+      <View style={{ width: "100%" }}>
         <CouncilResponse
           stage1={assistantMessage.stage1}
           stage2={assistantMessage.stage2}
@@ -238,25 +312,19 @@ function MessageBubble({
         />
       </View>
       {copyText ? (
-        <TouchableOpacity
-          onPress={() => handleCopy(copyText)}
-          style={{
-            marginLeft: 8,
-            padding: 8,
-            borderRadius: 20,
-            backgroundColor: "rgba(255,255,255,0.06)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.1)",
-            marginBottom: 8,
-          }}
-          activeOpacity={0.7}
-        >
-          {copied ? (
-            <Check size={14} color="#34d399" />
-          ) : (
-            <Copy size={14} color="#94a3b8" />
-          )}
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 4, marginLeft: 2, opacity: 0.5 }}>
+          <TouchableOpacity
+            onPress={() => handleCopy(copyText)}
+            style={{ padding: 4 }}
+            activeOpacity={0.7}
+          >
+            {copied ? (
+              <Check size={12} color="#34d399" />
+            ) : (
+              <Copy size={12} color="#94a3b8" />
+            )}
+          </TouchableOpacity>
+        </View>
       ) : null}
     </View>
   );

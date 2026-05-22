@@ -10,8 +10,10 @@ import {
   Platform,
   Alert,
   ScrollView,
+  LayoutAnimation,
+  UIManager,
 } from "react-native";
-import { Plus, Search, Send, WifiOff } from "lucide-react-native";
+import { Plus, Send, WifiOff } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Network from "expo-network";
@@ -25,6 +27,14 @@ import { FileChip } from "./FileChip";
 import { ImageChip } from "./ImageChip";
 import { AttachmentModal } from "./AttachmentModal";
 import { PRESETS } from "../lib/presets";
+
+// Enable LayoutAnimation for Android
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 interface BottomInputBarProps {
   onSend: (
@@ -42,8 +52,8 @@ interface BottomInputBarProps {
 const MAX_ATTACHMENTS = 4;
 
 /**
- * Unified keyboard-aware input bar using Animated translateY.
- * Listens to keyboard events and animates position.
+ * Focus-driven, dynamically expanding chat bottom bar.
+ * Collapses to a single inline line when unfocused; expands up to 5-6 lines when focused.
  */
 export default function BottomInputBar({
   onSend,
@@ -60,7 +70,9 @@ export default function BottomInputBar({
   const [images, setImages] = useState<ExtractedImage[]>([]);
   const [isOnline, setIsOnline] = useState(true);
   const [showAttachmentModal, setShowAttachmentModal] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
+  const inputRef = useRef<TextInput>(null);
   const MAX_CHARS = 2000;
 
   // Total number of attachments
@@ -76,7 +88,6 @@ export default function BottomInputBar({
         const status = await Network.getNetworkStateAsync();
         setIsOnline(status.isConnected ?? true);
       } catch {
-        // Assume online if check fails
         setIsOnline(true);
       }
     };
@@ -86,7 +97,6 @@ export default function BottomInputBar({
   }, []);
 
   useEffect(() => {
-    // Use keyboardWillShow/Hide on iOS, keyboardDidShow/Hide on Android
     const showEvent =
       Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent =
@@ -114,13 +124,22 @@ export default function BottomInputBar({
     };
   }, [keyboardOffset]);
 
+  const handleFocus = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsFocused(true);
+  };
+
+  const handleBlur = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsFocused(false);
+  };
+
   const handleSend = () => {
     const trimmed = message.trim();
     console.log("[BottomInputBar] handleSend called:", {
       message: trimmed,
       attachmentsCount: attachments.length,
       imagesCount: images.length,
-      firstImageBase64Length: images[0]?.base64?.length,
     });
     if ((trimmed || totalAttachments > 0) && !disabled && isOnline) {
       onSend(
@@ -128,13 +147,14 @@ export default function BottomInputBar({
         attachments.length > 0 ? attachments : undefined,
         images.length > 0 ? images : undefined,
       );
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessage("");
       setAttachments([]);
       setImages([]);
+      inputRef.current?.blur();
     }
   };
 
-  // Compute effective disabled state
   const effectivelyDisabled = disabled || !isOnline;
 
   const handleFilePick = async () => {
@@ -231,85 +251,133 @@ export default function BottomInputBar({
           </ScrollView>
         )}
 
-        <View className="bg-card rounded-2xl border border-border overflow-hidden">
-          {/* Text Input */}
-          <View>
-            <TextInput
-              className="text-base text-foreground px-4 pt-4 pb-2 min-h-[60px] max-h-32"
-              placeholder={
-                isOnline ? "Ask anything..." : "Offline - Connect to send"
-              }
-              placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
-              value={message}
-              onChangeText={setMessage}
-              multiline
-              maxLength={MAX_CHARS}
-              editable={!effectivelyDisabled}
-            />
-            <Text className="text-right text-xs text-muted-foreground px-4 pb-1">
-              {message.length}/{MAX_CHARS}
+        {/* Unified In-Line Dynamic Bar */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            backgroundColor: "#181d24", // Muted neutral background
+            borderRadius: 24,
+            borderWidth: 1,
+            borderColor: isFocused ? "rgba(32, 201, 151, 0.4)" : "rgba(255, 255, 255, 0.08)",
+            paddingHorizontal: 8,
+            paddingVertical: 6,
+          }}
+        >
+          {/* File Upload Icon */}
+          <TouchableOpacity
+            onPress={() => setShowAttachmentModal(true)}
+            style={{
+              width: 38,
+              height: 38,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 19,
+              backgroundColor: "rgba(255, 255, 255, 0.05)",
+              marginBottom: 1,
+            }}
+            disabled={effectivelyDisabled}
+            activeOpacity={0.7}
+          >
+            <Plus size={18} color="#9ca3af" />
+          </TouchableOpacity>
+
+          {/* Dynamic Expanding Text Input */}
+          <TextInput
+            ref={inputRef}
+            style={{
+              flex: 1,
+              color: "#f8fafc",
+              fontSize: 15,
+              lineHeight: 20,
+              paddingHorizontal: 10,
+              paddingTop: Platform.OS === "ios" ? 8 : 6,
+              paddingBottom: Platform.OS === "ios" ? 8 : 6,
+              minHeight: 38,
+              maxHeight: isFocused ? 120 : 38, // Collapses to 38px, expands up to ~5-6 lines (120px)
+            }}
+            placeholder={
+              isOnline ? "Ask anything..." : "Offline - Connect to send"
+            }
+            placeholderTextColor={isOnline ? "#6b7280" : "#ef4444"}
+            value={message}
+            onChangeText={setMessage}
+            multiline
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            maxLength={MAX_CHARS}
+            editable={!effectivelyDisabled}
+          />
+
+          {/* AI Mode Dropdown/Pill */}
+          <TouchableOpacity
+            onPress={onSearchPress}
+            style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 16,
+              backgroundColor: "rgba(32, 201, 151, 0.1)",
+              marginRight: 6,
+              marginBottom: 1,
+              alignItems: "center",
+              justifyContent: "center",
+              height: 38,
+            }}
+            disabled={effectivelyDisabled}
+            activeOpacity={0.7}
+          >
+            <Text style={{ color: "#20c997", fontSize: 12, fontWeight: "600" }}>
+              {activePresetId && PRESETS[activePresetId]
+                ? PRESETS[activePresetId].label.split(" ")[0] // Compact label
+                : "Custom"}
             </Text>
-          </View>
+          </TouchableOpacity>
 
-          {/* Action Row */}
-          <View className="flex-row items-center justify-between px-3 pb-3">
-            {/* Left Icons */}
-            <View className="flex-row items-center gap-2">
-              <TouchableOpacity
-                onPress={() => setShowAttachmentModal(true)}
-                className="w-10 h-10 items-center justify-center rounded-full bg-secondary"
-                disabled={effectivelyDisabled}
-              >
-                <Plus size={18} color="#9ca3af" />
-              </TouchableOpacity>
-
-              {/* Council Preset Pill */}
-              <TouchableOpacity
-                onPress={onSearchPress}
-                className="bg-primary/20 px-3 py-2 rounded-full flex-row items-center  gap-2"
-                disabled={effectivelyDisabled}
-              >
-                <Text className="text-primary text-sm font-semibold">
-                  {activePresetId && PRESETS[activePresetId]
-                    ? `${PRESETS[activePresetId].label} Council`
-                    : "Custom"}
-                </Text>
-              </TouchableOpacity>
-              <Text className="text-primary/60 text-md font-medium">
-                {(() => {
-                  // Calculate total unique models: members + chairman (if not already in members)
-                  const totalModels =
-                    chairmanModel && councilModelsCount > 0
-                      ? councilModelsCount // Chairman is included in members, so just show member count
-                      : councilModelsCount;
-                  return totalModels > 0 ? `Models: ${totalModels}` : "0";
-                })()}
-              </Text>
-            </View>
-
-            {/* Send Button */}
-            <TouchableOpacity
-              onPress={handleSend}
-              disabled={
-                (!message.trim() && totalAttachments === 0) ||
-                effectivelyDisabled
-              }
-              className={`w-12 h-12 items-center justify-center rounded-full ${
+          {/* Send Button */}
+          <TouchableOpacity
+            onPress={handleSend}
+            disabled={
+              (!message.trim() && totalAttachments === 0) ||
+              effectivelyDisabled
+            }
+            style={{
+              width: 38,
+              height: 38,
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 19,
+              backgroundColor:
                 (message.trim() || totalAttachments > 0) && !effectivelyDisabled
-                  ? "bg-primary"
-                  : "bg-muted"
-              }`}
-            >
-              {disabled ? (
-                <ActivityIndicator size="small" color="#0f1419" />
-              ) : !isOnline ? (
-                <WifiOff size={20} color="#ef4444" />
-              ) : (
-                <Send size={20} color="#0f1419" />
-              )}
-            </TouchableOpacity>
-          </View>
+                  ? "#20c997"
+                  : "rgba(255, 255, 255, 0.05)",
+              marginBottom: 1,
+            }}
+            activeOpacity={0.7}
+          >
+            {disabled ? (
+              <ActivityIndicator size="small" color="#0f1419" />
+            ) : !isOnline ? (
+              <WifiOff size={16} color="#ef4444" />
+            ) : (
+              <Send size={16} color="#0f1419" />
+            )}
+          </TouchableOpacity>
         </View>
+
+        {/* Character Count Indicator (subtle, visible under focus) */}
+        {isFocused && message.length > 0 && (
+          <Text
+            style={{
+              textAlign: "right",
+              fontSize: 10,
+              color: "#6b7280",
+              marginTop: 4,
+              marginRight: 8,
+            }}
+          >
+            {message.length}/{MAX_CHARS}
+          </Text>
+        )}
       </View>
 
       {/* Attachment Modal */}

@@ -16,7 +16,7 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, ClerkLoaded, useAuth } from "@clerk/clerk-expo";
-import { ConvexReactClient, useConvexAuth, useMutation } from "convex/react";
+import { ConvexReactClient, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { AlertTriangle } from "lucide-react-native";
 import { ErrorBoundary as AppErrorBoundary } from "../components/ErrorBoundary";
@@ -50,13 +50,16 @@ initLogger();
  */
 function AppNavigation() {
   const { isLoaded: isClerkLoaded, isSignedIn } = useAuth();
-  const { isAuthenticated } = useConvexAuth();
+  const { isLoading: isConvexAuthLoading, isAuthenticated } = useConvexAuth();
   const segments = useSegments();
   const router = useRouter();
 
   const getOrCreateUser = useMutation(api.users.getOrCreateUser);
   const settingsLoaded = useUIStore((state) => state.settingsLoaded);
   const hasApiKey = useUIStore((state) => state.hasApiKey);
+
+  // Check Convex DB for existing API key
+  const dbHasApiKey = useQuery(api.users.hasApiKey);
 
   // Track app state for resume handling
   const [isResuming, setIsResuming] = useState(false);
@@ -83,6 +86,16 @@ function AppNavigation() {
     return () => subscription.remove();
   }, []);
 
+  // Sync API key status from Convex database when authenticated
+  useEffect(() => {
+    if (isAuthenticated && dbHasApiKey) {
+      if (!hasApiKey) {
+        logWarning("[API Key Sync] Stored API key found on Convex DB, syncing locally...");
+        useUIStore.getState().saveApiKey("CONVEX_STORED");
+      }
+    }
+  }, [isAuthenticated, dbHasApiKey, hasApiKey]);
+
   // Navigation guard with debounce to prevent rapid redirects
   useEffect(() => {
     if (!isClerkLoaded || !settingsLoaded || isResuming) return;
@@ -103,7 +116,13 @@ function AppNavigation() {
           router.replace("/(auth)/login");
         }
       } else {
-        // User is signed in
+        // User is signed in.
+        // Wait for Convex auth to load and dbHasApiKey query to resolve before checking if they need to setup key.
+        const isResolvingAuth = isConvexAuthLoading || (isAuthenticated && dbHasApiKey === undefined);
+        if (isResolvingAuth) {
+          return;
+        }
+
         if (!hasApiKey) {
           // If no API key, they must be redirected to setup-api-key
           if (!isSetupApiKeyScreen) {
@@ -123,7 +142,18 @@ function AppNavigation() {
         clearTimeout(navigationTimeoutRef.current);
       }
     };
-  }, [isSignedIn, segments, isClerkLoaded, settingsLoaded, hasApiKey, isResuming, router]);
+  }, [
+    isSignedIn,
+    segments,
+    isClerkLoaded,
+    settingsLoaded,
+    hasApiKey,
+    isResuming,
+    router,
+    isConvexAuthLoading,
+    isAuthenticated,
+    dbHasApiKey,
+  ]);
 
   // Sync user record when authenticated in Convex
   useEffect(() => {

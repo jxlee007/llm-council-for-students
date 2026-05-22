@@ -92,7 +92,7 @@ The app processes every query through a unique 3-stage pipeline:
 ## 📲 Try It
 
 ### Download APK (Android)
-👉 [Download latest APK](https://github.com/jxlee007/llm-council-for-students/raw/refs/heads/main/application-76e9ba9a-5e5c-422d-bb9e-1ffee90769a9.apk)
+👉 [Download latest APK](https://github.com/jxlee007/llm-council-for-students/releases/tag/dev-v2)
 
 **Install steps:**
 1. Download APK
