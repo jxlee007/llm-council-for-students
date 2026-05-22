@@ -153,7 +153,22 @@ function MessageBubble({
 
             {/* User Bubble Container */}
             <View style={{ flexShrink: 1, alignItems: "flex-end" }}>
-              <View
+              <Text
+                onTextLayout={handleTextLayout}
+                style={{
+                  position: "absolute",
+                  opacity: 0,
+                  left: -9999,
+                  fontSize: 15,
+                  lineHeight: 22,
+                }}
+              >
+                {message.content}
+              </Text>
+
+              <TouchableOpacity
+                onPress={showExpandToggle ? toggleExpand : undefined}
+                activeOpacity={showExpandToggle ? 0.85 : 1}
                 style={{
                   backgroundColor: "#1e293b", // Sophisticated muted slate-800 background
                   borderRadius: 18,
@@ -164,7 +179,6 @@ function MessageBubble({
                 }}
               >
                 <Text
-                  onTextLayout={handleTextLayout}
                   numberOfLines={isExpanded ? undefined : 8}
                   style={{
                     color: "#f8fafc", // High contrast readable light slate
@@ -196,7 +210,7 @@ function MessageBubble({
                     )}
                   </TouchableOpacity>
                 )}
-              </View>
+              </TouchableOpacity>
 
               {/* Minimalist low-opacity action row below user bubble */}
               <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: 4, marginRight: 2, opacity: 0.5 }}>

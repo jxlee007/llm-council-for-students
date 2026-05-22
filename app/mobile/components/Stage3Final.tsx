@@ -47,7 +47,7 @@ export default function Stage3Final({ response }: Stage3FinalProps) {
       {/* Content - Fully expanded view (no nested scroll) */}
       <View
         style={{
-          paddingHorizontal: 4,
+          paddingHorizontal: 0,
           paddingBottom: 160, // ample space for bottom input bar overlap
         }}
       >

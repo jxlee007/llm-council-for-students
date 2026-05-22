@@ -1,27 +1,27 @@
-import React, { useEffect } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, LayoutChangeEvent } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   withRepeat,
   withSequence,
+  withSpring,
   Easing,
 } from "react-native-reanimated";
+import { Brain, GitCompare, FileCheck } from "lucide-react-native";
 
 export type StageState = "done" | "active" | "pending";
 
 export interface StageFlowStageConfig {
   label: string;
-  sub: string;
   activeColor: string;
 }
 
 export const STAGE_CONFIGS: StageFlowStageConfig[] = [
-  { label: "REASON",  sub: "Stage 1", activeColor: "#60a5fa" },
-  { label: "COMPARE", sub: "Stage 2", activeColor: "#fbbf24" },
-  { label: "RESULT",  sub: "Stage 3", activeColor: "#34d399" },
+  { label: "Reason", activeColor: "#60a5fa" },
+  { label: "Compare", activeColor: "#fbbf24" },
+  { label: "Result", activeColor: "#34d399" },
 ];
 
 interface StageFlowIndicatorProps {
@@ -35,165 +35,7 @@ interface StageFlowIndicatorProps {
   stage1Total?: number;
 }
 
-/** Animated pulsing dot for in-progress stages */
-function PulsingDot({ color }: { color: string }) {
-  const opacity = useSharedValue(1);
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.15, { duration: 500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return (
-    <Animated.View
-      style={[
-        { width: 6, height: 6, borderRadius: 3, backgroundColor: color, marginLeft: 5 },
-        style,
-      ]}
-    />
-  );
-}
 
-/** Single stage pill — tappable when stage has data */
-function StagePill({
-  config,
-  processingState,
-  isSelected,
-  onPress,
-  delay = 0,
-  stage1Count,
-  stage1Total,
-  index,
-}: {
-  config: StageFlowStageConfig;
-  processingState: StageState;
-  isSelected: boolean;
-  onPress: () => void;
-  delay?: number;
-  stage1Count?: number;
-  stage1Total?: number;
-  index: number;
-}) {
-  const opacity = useSharedValue(processingState === "pending" ? 0.35 : 0);
-  const scale = useSharedValue(0.88);
-
-  useEffect(() => {
-    if (processingState !== "pending") {
-      opacity.value = withDelay(delay, withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) }));
-      scale.value = withDelay(delay, withTiming(1, { duration: 320, easing: Easing.out(Easing.back(1.1)) }));
-    } else {
-      opacity.value = withTiming(0.35, { duration: 250 });
-      scale.value = withTiming(1, { duration: 250 });
-    }
-  }, [processingState]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
-  const isDone = processingState === "done";
-  const isProcessing = processingState === "active";
-  const isLit = isDone || isProcessing;
-
-  const borderColor = isSelected
-    ? config.activeColor
-    : isLit
-    ? `${config.activeColor}99`
-    : "#2d3748";
-
-  const bgColor = isSelected
-    ? `${config.activeColor}28`
-    : isLit
-    ? `${config.activeColor}10`
-    : "#1a2332";
-
-  const subText =
-    index === 0 && stage1Count !== undefined && stage1Total !== undefined
-      ? `${stage1Count} / ${stage1Total}`
-      : config.sub;
-
-  const isTappable = processingState !== "pending";
-
-  return (
-    <Animated.View style={animStyle}>
-      <TouchableOpacity
-        onPress={onPress}
-        disabled={!isTappable}
-        activeOpacity={isTappable ? 0.7 : 1}
-        style={{
-          width: 92,
-          minHeight: 72,
-          borderRadius: 16,
-          borderWidth: isSelected ? 2 : 1.5,
-          borderColor,
-          backgroundColor: bgColor,
-          paddingVertical: 12,
-          paddingHorizontal: 8,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text
-          style={{
-            color: isLit ? config.activeColor : "#4a5568",
-            fontSize: 10,
-            fontWeight: "700",
-            letterSpacing: 1,
-            textAlign: "center",
-          }}
-        >
-          {config.label}
-        </Text>
-        <View style={{ flexDirection: "row", alignItems: "center", marginTop: 5 }}>
-          <Text
-            style={{
-              color: isLit ? "#94a3b8" : "#2d3748",
-              fontSize: 10,
-              textAlign: "center",
-            }}
-          >
-            {subText}
-          </Text>
-          {isProcessing && <PulsingDot color={config.activeColor} />}
-        </View>
-
-        {/* Selected underline indicator */}
-        {isSelected && (
-          <View
-            style={{
-              position: "absolute",
-              bottom: 4,
-              width: 20,
-              height: 2,
-              borderRadius: 1,
-              backgroundColor: config.activeColor,
-            }}
-          />
-        )}
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
-/** Arrow connector between pills */
-function Arrow({ lit }: { lit: boolean }) {
-  const opacity = useSharedValue(0.15);
-  useEffect(() => {
-    opacity.value = withTiming(lit ? 0.9 : 0.15, { duration: 400 });
-  }, [lit]);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return (
-    <Animated.View style={[{ marginHorizontal: 4, alignItems: "center", justifyContent: "center" }, style]}>
-      <Text style={{ color: "#64748b", fontSize: 18, fontWeight: "200" }}>→</Text>
-    </Animated.View>
-  );
-}
 
 export default function StageFlowIndicator({
   activeStage,
@@ -202,6 +44,9 @@ export default function StageFlowIndicator({
   stage1Count = 0,
   stage1Total = 4,
 }: StageFlowIndicatorProps) {
+  const [widths, setWidths] = useState<number[]>([0, 0, 0]);
+  const [xs, setXs] = useState<number[]>([0, 0, 0]);
+
   const getProcessingState = (stageIndex: number): StageState => {
     const stageNum = stageIndex + 1;
     const active = typeof activeStage === "number" ? activeStage : 1;
@@ -211,33 +56,134 @@ export default function StageFlowIndicator({
     return "pending";
   };
 
+  const handleLayout = (index: number) => (event: LayoutChangeEvent) => {
+    const { width, x } = event.nativeEvent.layout;
+    
+    setWidths((prev) => {
+      const next = [...prev];
+      next[index] = width;
+      return next;
+    });
+
+    setXs((prev) => {
+      const next = [...prev];
+      next[index] = x;
+      return next;
+    });
+  };
+
+  const activeIndex = selectedStage ? selectedStage - 1 : 0;
+
+  const animatedPillStyle = useAnimatedStyle(() => {
+    const targetWidth = widths[activeIndex] || 0;
+    const targetX = xs[activeIndex] || 0;
+
+    let bgColor = "rgba(96, 165, 250, 0.16)";
+    let borderColor = "rgba(96, 165, 250, 0.4)";
+
+    if (activeIndex === 1) {
+      bgColor = "rgba(251, 191, 36, 0.16)";
+      borderColor = "rgba(251, 191, 36, 0.4)";
+    } else if (activeIndex === 2) {
+      bgColor = "rgba(52, 211, 153, 0.16)";
+      borderColor = "rgba(52, 211, 153, 0.4)";
+    }
+
+    return {
+      width: withTiming(targetWidth, { duration: 220, easing: Easing.out(Easing.quad) }),
+      transform: [
+        { translateX: withTiming(targetX, { duration: 220, easing: Easing.out(Easing.quad) }) }
+      ],
+      backgroundColor: withTiming(bgColor, { duration: 220 }),
+      borderColor: withTiming(borderColor, { duration: 220 }),
+    };
+  }, [widths, xs, activeIndex]);
+
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        paddingVertical: 14,
-        paddingHorizontal: 4,
-      }}
-    >
-      {STAGE_CONFIGS.map((cfg, i) => (
-        <React.Fragment key={i}>
-          <StagePill
-            config={cfg}
-            processingState={getProcessingState(i)}
-            isSelected={selectedStage === i + 1}
-            onPress={() => onSelectStage((i + 1) as 1 | 2 | 3)}
-            delay={i * 80}
-            stage1Count={stage1Count}
-            stage1Total={stage1Total}
-            index={i}
+    <View style={{ paddingVertical: 12, paddingHorizontal: 4 }}>
+      <View
+        style={{
+          flexDirection: "row",
+          backgroundColor: "#181d24", // Premium dark charcoal segmented control background
+          borderRadius: 24,
+          padding: 4,
+          borderWidth: 1,
+          borderColor: "rgba(255, 255, 255, 0.05)",
+          position: "relative",
+        }}
+      >
+        {/* Hardware-Accelerated Sliding Capsule Pill */}
+        {widths[activeIndex] !== undefined && widths[activeIndex] > 0 && (
+          <Animated.View
+            style={[
+              {
+                position: "absolute",
+                top: 2,
+                bottom: 2,
+                borderRadius: 22,
+                borderWidth: 1,
+              },
+              animatedPillStyle,
+            ]}
           />
-          {i < STAGE_CONFIGS.length - 1 && (
-            <Arrow lit={getProcessingState(i) === "done"} />
-          )}
-        </React.Fragment>
-      ))}
+        )}
+
+        {STAGE_CONFIGS.map((cfg, i) => {
+          const processingState = getProcessingState(i);
+          const isSelected = selectedStage === i + 1;
+          const isPending = processingState === "pending";
+          const isActive = processingState === "active";
+          const isDone = processingState === "done";
+
+          const opacity = isSelected ? 1 : isPending ? 0.25 : 0.65;
+          const iconColor = isSelected ? cfg.activeColor : isPending ? "#475569" : "#94a3b8";
+          const textColor = isSelected ? "#ffffff" : isPending ? "#475569" : "#94a3b8";
+
+          // Icon mapper
+          let IconComponent = Brain;
+          if (i === 1) IconComponent = GitCompare;
+          if (i === 2) IconComponent = FileCheck;
+
+          // Stage counter injection for Stage 1 (Reason)
+          let labelText = cfg.label;
+          if (i === 0 && stage1Count !== undefined && stage1Total !== undefined) {
+            labelText = `${cfg.label} (${stage1Count}/${stage1Total})`;
+          }
+
+          return (
+            <TouchableOpacity
+              key={i}
+              onLayout={handleLayout(i)}
+              onPress={() => !isPending && onSelectStage((i + 1) as 1 | 2 | 3)}
+              disabled={isPending}
+              activeOpacity={0.7}
+              style={{
+                flex: 1,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                paddingVertical: 10,
+                borderRadius: 20,
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", opacity }}>
+                <IconComponent size={15} color={iconColor} />
+                <Text
+                  style={{
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: "600",
+                    marginLeft: 6,
+                  }}
+                >
+                  {labelText}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 }

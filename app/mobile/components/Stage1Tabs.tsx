@@ -86,7 +86,7 @@ export default function Stage1Tabs({ responses }: Stage1TabsProps) {
       </ScrollView>
 
       {/* Response content - Natural height expansion */}
-      <View className="rounded-xl overflow-hidden px-2 pb-4">
+      <View className="rounded-xl overflow-hidden px-0 pb-4">
         <Markdown
           style={{
             body: {

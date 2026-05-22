@@ -122,20 +122,13 @@ export default function CouncilResponse({
           key={selectedStage}
           style={{
             marginTop: 4,
-            marginHorizontal: 2,
+            marginHorizontal: 0,
             borderRadius: 16,
             overflow: "hidden",
-            borderWidth: 1,
-            borderColor:
-              selectedStage === 1
-                ? "#60a5fa33"
-                : selectedStage === 2
-                ? "#fbbf2433"
-                : "#34d39933",
-            backgroundColor: "#0d1524",
+            backgroundColor: "transparent",
           }}
         >
-          <View style={{ padding: 12 }}>{renderContent()}</View>
+          <View style={{ paddingVertical: 12, paddingHorizontal: 0 }}>{renderContent()}</View>
         </View>
       )}
     </View>
