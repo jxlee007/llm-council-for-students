@@ -15,9 +15,8 @@ import {
   FolderPlus,
   Trash2,
 } from "lucide-react-native";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useAuth } from "@clerk/clerk-expo";
+import { useCouncilAuth } from "../../hooks/useCouncilAuth";
+import { useChats } from "../../hooks/useChats";
 import EmptyState from "../../components/EmptyState";
 import SkeletonLoader from "../../components/SkeletonLoader";
 import { Id } from "../../convex/_generated/dataModel";
@@ -28,16 +27,12 @@ import { Id } from "../../convex/_generated/dataModel";
  */
 export default function ChatHistoryScreen() {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn } = useCouncilAuth();
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
 
-  const conversations = useQuery(
-    api.conversations.list,
-    isSignedIn ? {} : "skip"
-  );
-  const deleteConversation = useMutation(api.conversations.remove);
+  const { chats: conversations, deleteChat: deleteConversation, isLoading } = useChats();
 
   const handleOpenConversation = (id: string) => {
     router.push(`/chat/${id}`);
@@ -89,9 +84,7 @@ export default function ChatHistoryScreen() {
           onPress: async () => {
             if (selectedId) {
               try {
-                await deleteConversation({
-                  id: selectedId as Id<"conversations">,
-                });
+                await deleteConversation(selectedId);
               } catch (err) {
                 console.error("Failed to delete:", err);
               }
@@ -142,7 +135,7 @@ export default function ChatHistoryScreen() {
   );
 
   // Loading state
-  if (conversations === undefined) {
+  if (isLoading) {
     return <SkeletonLoader />;
   }
 

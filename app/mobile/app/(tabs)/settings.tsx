@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Lightbulb, Info, LogOut, User, Shield } from "lucide-react-native";
-import { useAuth, useUser, useClerk } from "@clerk/clerk-expo";
+import { useCouncilAuth, useCouncilUser, useCouncilClerk } from "../../hooks/useCouncilAuth";
 import { useRouter } from "expo-router";
 import { metrics } from "../../lib/logger";
 import { useUIStore } from "../../lib/store";
@@ -11,9 +11,9 @@ import { useUIStore } from "../../lib/store";
  * Includes Authentication, BYOK API key management and other preferences.
  */
 export default function SettingsScreen() {
-  const { signOut } = useClerk();
-  const { isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { signOut } = useCouncilClerk();
+  const { isSignedIn } = useCouncilAuth();
+  const { user } = useCouncilUser();
   const router = useRouter();
 
   const [isSendingMetrics, setIsSendingMetrics] = useState(false);

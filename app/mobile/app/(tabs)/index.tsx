@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { View, Text, TouchableWithoutFeedback, Keyboard } from "react-native";
 import { useRouter } from "expo-router";
-import { useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import { useAuth } from "@clerk/clerk-expo";
 import { useUIStore } from "../../lib/store";
+import { useCouncilAuth } from "../../hooks/useCouncilAuth";
+import { useChats } from "../../hooks/useChats";
 import BottomInputBar from "../../components/BottomInputBar";
 import PresetsModal from "../../components/PresetsModal";
 
@@ -14,8 +13,8 @@ import PresetsModal from "../../components/PresetsModal";
  */
 export default function HomeScreen() {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
-  const createConversation = useMutation(api.conversations.create);
+  const { isSignedIn } = useCouncilAuth();
+  const { createChat } = useChats();
   const { councilModels, activePresetId, chairmanModel, setPendingMessage } = useUIStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -40,9 +39,7 @@ export default function HomeScreen() {
         images
       });
 
-      const conversationId = await createConversation({
-        title: "New Chat",
-      });
+      const conversationId = await createChat("New Chat");
 
       // Navigate to chat screen
       // Note: We don't pass initialMessage in query param anymore, ChatScreen will check the store

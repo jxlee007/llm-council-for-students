@@ -32,9 +32,9 @@ export interface ChatFacade {
 }
 
 export function useChats(activeChatId?: string): ChatFacade {
-  const convexChats = useQuery(api.conversations.list) || [];
+  const convexChats = useQuery(api.conversations.list);
   const convexActiveChat = activeChatId ? useQuery(api.conversations.get, { id: activeChatId as Id<"conversations"> }) : null;
-  const convexMessages = activeChatId ? useQuery(api.messages.list, { conversationId: activeChatId as Id<"conversations"> }) : [];
+  const convexMessages = activeChatId ? useQuery(api.messages.list, { conversationId: activeChatId as Id<"conversations"> }) : null;
   
   const convexCreateChat = useMutation(api.conversations.create);
   const convexDeleteChat = useMutation(api.conversations.remove);
@@ -43,7 +43,7 @@ export function useChats(activeChatId?: string): ChatFacade {
   const convexRunCouncil = useAction(api.council.runCouncil);
 
   // Format data to match UI expectations
-  const formattedChats = convexChats.map((c) => ({
+  const formattedChats = (convexChats || []).map((c) => ({
     id: c._id,
     title: c.title,
     updatedAt: c.lastMessageAt,
