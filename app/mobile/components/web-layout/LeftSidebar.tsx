@@ -15,8 +15,11 @@ import {
   MoreVertical,
   Trash2,
   Sparkles,
+  Settings,
+  Cpu,
 } from "lucide-react-native";
 import { useChats } from "../../hooks/useChats";
+import { useUIStore } from "../../lib/store";
 
 export default function LeftSidebar() {
   const router = useRouter();
@@ -24,6 +27,18 @@ export default function LeftSidebar() {
   const activeChatId = params.id;
 
   const { chats, createChat, deleteChat, toggleStarChat, isLoading } = useChats();
+  const { showRightSidebar, toggleRightSidebar, rightSidebarTab, setRightSidebarTab } = useUIStore();
+
+  const handleToggleTab = (tab: "models" | "settings") => {
+    if (showRightSidebar && rightSidebarTab === tab) {
+      toggleRightSidebar();
+    } else {
+      if (!showRightSidebar) {
+        toggleRightSidebar();
+      }
+      setRightSidebarTab(tab);
+    }
+  };
 
   // Dropdown menu state
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
@@ -134,14 +149,71 @@ export default function LeftSidebar() {
           </Text>
         </View>
 
-        {/* New Chat Button */}
+        {/* New Chat List Option */}
         <TouchableOpacity
           onPress={handleNewChat}
-          className="bg-[#20c997] py-3 px-4 rounded-xl flex-row items-center justify-center gap-2 mb-6 hover:bg-[#1bb386] transition-all duration-200 active:scale-95 shadow-md shadow-emerald-950/20"
-          activeOpacity={0.8}
+          className="flex-row items-center px-3 py-2.5 rounded-lg mb-3 hover:bg-slate-800/40 transition-all duration-150"
+          activeOpacity={0.7}
         >
-          <Plus size={18} color="#0f1419" strokeWidth={2.5} />
-          <Text className="text-[#0f1419] font-bold text-sm">New Chat</Text>
+          <Plus
+            size={18}
+            color="#20c997"
+            strokeWidth={2.5}
+            className="mr-3"
+          />
+          <Text className="text-sm font-medium text-slate-200">
+            New Chat
+          </Text>
+        </TouchableOpacity>
+
+        {/* Active Council (Models) List Option */}
+        <TouchableOpacity
+          onPress={() => handleToggleTab("models")}
+          className={`flex-row items-center px-3 py-2.5 rounded-lg mb-3 transition-all duration-150 border ${
+            showRightSidebar && rightSidebarTab === "models"
+              ? "bg-slate-800/60 border-slate-700/50"
+              : "hover:bg-slate-800/40 border-transparent"
+          }`}
+          activeOpacity={0.7}
+        >
+          <Cpu
+            size={18}
+            color={showRightSidebar && rightSidebarTab === "models" ? "#20c997" : "#94a3b8"}
+            strokeWidth={2.2}
+            className="mr-3"
+          />
+          <Text
+            className={`text-sm font-medium ${
+              showRightSidebar && rightSidebarTab === "models" ? "text-white font-semibold" : "text-slate-300"
+            }`}
+          >
+            Available Free Models
+          </Text>
+        </TouchableOpacity>
+
+        {/* Settings List Option */}
+        <TouchableOpacity
+          onPress={() => handleToggleTab("settings")}
+          className={`flex-row items-center px-3 py-2.5 rounded-lg mb-5 transition-all duration-150 border ${
+            showRightSidebar && rightSidebarTab === "settings"
+              ? "bg-slate-800/60 border-slate-700/50"
+              : "hover:bg-slate-800/40 border-transparent"
+          }`}
+          activeOpacity={0.7}
+        >
+          <Settings
+            size={18}
+            color={showRightSidebar && rightSidebarTab === "settings" ? "#20c997" : "#94a3b8"}
+            strokeWidth={2.2}
+            className="mr-3"
+          />
+          <Text
+            className={`text-sm font-medium ${
+              showRightSidebar && rightSidebarTab === "settings" ? "text-white font-semibold" : "text-slate-300"
+            }`}
+          >
+            Settings
+          </Text>
         </TouchableOpacity>
 
         {/* Scrollable Chat list */}

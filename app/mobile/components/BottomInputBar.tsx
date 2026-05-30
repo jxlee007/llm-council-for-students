@@ -155,6 +155,15 @@ export default function BottomInputBar({
     }
   };
 
+  const handleKeyPress = (e: any) => {
+    if (Platform.OS === "web") {
+      if (e.nativeEvent.key === "Enter" && !e.nativeEvent.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    }
+  };
+
   const effectivelyDisabled = disabled || !isOnline;
 
   const handleFilePick = async () => {
@@ -295,6 +304,7 @@ export default function BottomInputBar({
               paddingBottom: Platform.OS === "ios" ? 8 : 6,
               minHeight: 38,
               maxHeight: isFocused ? 120 : 38, // Collapses to 38px, expands up to ~5-6 lines (120px)
+              ...(Platform.OS === "web" ? { outlineStyle: "none" } as any : {}),
             }}
             placeholder={
               isOnline ? "Ask anything..." : "Offline - Connect to send"
@@ -307,6 +317,7 @@ export default function BottomInputBar({
             onBlur={handleBlur}
             maxLength={MAX_CHARS}
             editable={!effectivelyDisabled}
+            onKeyPress={handleKeyPress}
           />
 
           {/* AI Mode Dropdown/Pill */}

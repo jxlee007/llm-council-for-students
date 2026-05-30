@@ -1,17 +1,20 @@
-/**
- * Application configuration with environment validation.
- * Fails fast on missing critical environment variables.
- */
+import { Platform } from 'react-native';
 
 export const Config = {
   // Core configuration
   clerkPublishableKey: process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || "",
   convexUrl: process.env.EXPO_PUBLIC_CONVEX_URL || "",
-  apiUrl: process.env.EXPO_PUBLIC_API_URL || (
-    process.env.EXPO_PUBLIC_APP_VARIANT === "production" || process.env.EXPO_PUBLIC_APP_VARIANT === "preview"
-      ? "https://llm-council-for-students.onrender.com"
-      : "http://localhost:8001"
-  ),
+  apiUrl: (() => {
+    const envUrl = process.env.EXPO_PUBLIC_API_URL;
+    if (Platform.OS === 'web' && envUrl) {
+      return envUrl.replace(/(\d{1,3}\.){3}\d{1,3}/, 'localhost');
+    }
+    return envUrl || (
+      process.env.EXPO_PUBLIC_APP_VARIANT === "production" || process.env.EXPO_PUBLIC_APP_VARIANT === "preview"
+        ? "https://llm-council-for-students.onrender.com"
+        : "http://localhost:8001"
+    );
+  })(),
   appVariant: (process.env.EXPO_PUBLIC_APP_VARIANT || "development") as "development" | "preview" | "production",
 
   // Optional configuration

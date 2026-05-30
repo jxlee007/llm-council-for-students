@@ -78,6 +78,12 @@ interface UIState {
   loadApiKey: () => Promise<string | null>;
   clearApiKey: () => Promise<void>;
   checkApiKeyExists: () => Promise<void>;
+
+  // Right sidebar toggle state
+  showRightSidebar: boolean;
+  toggleRightSidebar: () => void;
+  rightSidebarTab: 'models' | 'settings';
+  setRightSidebarTab: (tab: 'models' | 'settings') => void;
 }
 
 // findMatchingPreset removed since presets are now dynamic
@@ -94,8 +100,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   pendingMessage: null,
   availableModels: [],
   modelsLastFetched: 0,
+  showRightSidebar: false,
+  rightSidebarTab: 'models',
 
   setPendingMessage: (message) => set({ pendingMessage: message }),
+  toggleRightSidebar: () => set((state) => ({ showRightSidebar: !state.showRightSidebar })),
+  setRightSidebarTab: (tab) => set({ rightSidebarTab: tab }),
 
   // Fetch models with 60s cache
   fetchModelsIfNeeded: async () => {

@@ -29,6 +29,7 @@ import Config, { getConfigErrorMessage } from "../lib/config";
 import { initLogger, sentryWrap, navigationIntegration, logError, logWarning } from "../lib/logger";
 import * as Sentry from '@sentry/react-native';
 import LeftSidebar from "../components/web-layout/LeftSidebar";
+import RightSidebar from "../components/web-layout/RightSidebar";
 
 // Sentry is initialized via initLogger() in AppNavigation/RootLayout below.
 
@@ -276,6 +277,7 @@ function WebAppNavigation() {
   const segments = useSegments();
   const router = useRouter();
   const settingsLoaded = useUIStore((state) => state.settingsLoaded);
+  const showRightSidebar = useUIStore((state) => state.showRightSidebar);
 
   useEffect(() => {
     if (!settingsLoaded) return;
@@ -325,8 +327,16 @@ function WebAppNavigation() {
         </Stack>
       </View>
 
-      {/* Right Pane: Reserved for Settings & Model Management in Phase 2 */}
-      {/* w-80 could be added here when enabled */}
+      {/* Right Pane: Settings & Model Management */}
+      <View
+        className={`transition-all duration-300 ease-in-out border-l border-slate-800/80 bg-[#0f1419] ${
+          showRightSidebar
+            ? "w-80 opacity-100"
+            : "w-0 opacity-0 overflow-hidden border-l-0"
+        }`}
+      >
+        <RightSidebar />
+      </View>
     </View>
   );
 }

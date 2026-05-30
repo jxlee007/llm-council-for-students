@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { Platform } from "react-native";
 import TopHeader from "../../components/TopHeader";
 
 /**
@@ -9,7 +10,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        header: (props) => <TopHeader {...props} />,
+        header: Platform.OS === "web" ? undefined : (props) => <TopHeader {...props} />,
+        headerShown: Platform.OS !== "web",
         tabBarStyle: { display: "none" }, // Hide bottom tab bar
       }}
     >

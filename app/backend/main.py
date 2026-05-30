@@ -30,6 +30,11 @@ app = FastAPI(title="LLM Council API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8081",
+        "http://localhost:8080",
+        "http://localhost:19006",
+    ],
     allow_origin_regex="https?://.*",  # Allows all HTTP/HTTPS origins dynamically with credentials
     allow_credentials=True,
     allow_methods=["*"],
