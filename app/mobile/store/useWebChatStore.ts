@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 export interface WebMessage {
   id: string;
+  _id?: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   createdAt: number;
@@ -31,6 +32,7 @@ export interface WebChat {
   updatedAt: number;
   messages: WebMessage[];
   modelConfig?: string[];
+  isStarred?: boolean;
 }
 
 interface WebChatState {
@@ -43,6 +45,7 @@ interface WebChatState {
   updateMessage: (chatId: string, messageId: string, updates: Partial<WebMessage>) => void;
   updateChatTitle: (chatId: string, title: string) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
+  toggleStarChat: (chatId: string) => void;
 }
 
 // Dummy storage for native platforms so Zustand persist doesn't crash
@@ -73,13 +76,14 @@ export const useWebChatStore = create<WebChatState>()(
         const chat = state.chats[chatId];
         if (!chat) return state;
         
+        const enrichedMessage = { ...message, _id: message._id || message.id };
         return {
           chats: {
             ...state.chats,
             [chatId]: {
               ...chat,
               updatedAt: Date.now(),
-              messages: [...chat.messages, message]
+              messages: [...chat.messages, enrichedMessage]
             }
           }
         };
@@ -112,6 +116,22 @@ export const useWebChatStore = create<WebChatState>()(
             [chatId]: {
               ...chat,
               title,
+              updatedAt: Date.now()
+            }
+          }
+        };
+      }),
+
+      toggleStarChat: (chatId) => set((state) => {
+        const chat = state.chats[chatId];
+        if (!chat) return state;
+
+        return {
+          chats: {
+            ...state.chats,
+            [chatId]: {
+              ...chat,
+              isStarred: !chat.isStarred,
               updatedAt: Date.now()
             }
           }

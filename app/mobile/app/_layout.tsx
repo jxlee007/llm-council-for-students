@@ -28,6 +28,7 @@ import { api } from "../convex/_generated/api";
 import Config, { getConfigErrorMessage } from "../lib/config";
 import { initLogger, sentryWrap, navigationIntegration, logError, logWarning } from "../lib/logger";
 import * as Sentry from '@sentry/react-native';
+import LeftSidebar from "../components/web-layout/LeftSidebar";
 
 // Sentry is initialized via initLogger() in AppNavigation/RootLayout below.
 
@@ -304,20 +305,29 @@ function WebAppNavigation() {
   }
 
   return (
-    <>
-      <OfflineBanner />
-      <Stack
-        screenOptions={{
-          headerStyle: { backgroundColor: "#0f1419" },
-          headerTintColor: "#fff",
-          headerTitleStyle: { fontWeight: "bold" },
-          contentStyle: { backgroundColor: "#0f1419" },
-        }}
-      >
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
-      </Stack>
-    </>
+    <View className="flex-1 flex-row h-screen bg-[#0f1419]">
+      {/* Left Pane: Fixed Sidebar */}
+      <View className="w-72 border-r border-slate-800/80 bg-[#0f1419]" style={{ overflow: "visible", zIndex: 10 }}>
+        <LeftSidebar />
+      </View>
+
+      {/* Center Pane: Main active stack view */}
+      <View className="flex-1 bg-[#0f1419]">
+        <OfflineBanner />
+        <Stack
+          screenOptions={{
+            headerShown: false, // Clean desktop-class layout with headers hidden
+            contentStyle: { backgroundColor: "#0f1419" },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="chat/[id]" />
+        </Stack>
+      </View>
+
+      {/* Right Pane: Reserved for Settings & Model Management in Phase 2 */}
+      {/* w-80 could be added here when enabled */}
+    </View>
   );
 }
 

@@ -2,9 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
-import { useQuery, useAction, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { useUIStore } from "../../lib/store";
+import { useChatMessages } from "../../hooks/useChatMessages";
 import type { Message, AggregateRanking } from "../../lib/types";
 import { ExtractedFile, ExtractedImage } from "../../lib/files";
 import BottomInputBar from "../../components/BottomInputBar";
@@ -30,12 +29,15 @@ function ChatScreen() {
   const insets = useSafeAreaInsets();
   const flatListRef = useRef<FlatList>(null);
 
-  const conversationId = id as Id<"conversations">;
-  const conversation = useQuery(api.conversations.get, { id: conversationId });
-  const messages = useQuery(api.messages.list, { conversationId });
-  const runCouncil = useAction(api.council.runCouncil);
-  const createAttachment = useMutation(api.attachments.create);
-  const deleteMessage = useMutation(api.messages.remove);
+  const conversationId = id;
+  const {
+    conversation,
+    messages,
+    runCouncil,
+    createAttachment,
+    deleteMessage,
+    isLoading,
+  } = useChatMessages(id as string);
 
   const {
     councilModels,
@@ -362,7 +364,7 @@ function ChatScreen() {
     [handleRetryMessage],
   );
 
-  if (conversation === undefined || messages === undefined) {
+  if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-background">
         <ActivityIndicator size="large" color="#20c997" />

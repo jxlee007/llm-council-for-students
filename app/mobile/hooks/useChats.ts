@@ -1,6 +1,10 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { Id } from '../convex/_generated/dataModel';
+
+const EMPTY_CHATS: any[] = [];
+const EMPTY_MESSAGES: any[] = [];
 
 export interface ChatFacade {
   isLoading: boolean;
@@ -29,6 +33,7 @@ export interface ChatFacade {
     systemPrompt?: string;
     history?: any[];
   }) => Promise<{ success: boolean; messageId?: string; error?: string }>;
+  toggleStarChat: (chatId: string) => Promise<void>;
 }
 
 export function useChats(activeChatId?: string): ChatFacade {
@@ -42,14 +47,17 @@ export function useChats(activeChatId?: string): ChatFacade {
   const convexCreateAttachment = useMutation(api.attachments.create);
   const convexRunCouncil = useAction(api.council.runCouncil);
 
-  // Format data to match UI expectations
-  const formattedChats = (convexChats || []).map((c) => ({
-    id: c._id,
-    title: c.title,
-    updatedAt: c.lastMessageAt,
-    messages: [],
-    modelConfig: c.modelConfig,
-  }));
+  // Format data to match UI expectations, wrapped in useMemo for reference stability
+  const formattedChats = useMemo(() => {
+    if (!convexChats) return EMPTY_CHATS;
+    return convexChats.map((c) => ({
+      id: c._id,
+      title: c.title,
+      updatedAt: c.lastMessageAt,
+      messages: [],
+      modelConfig: c.modelConfig,
+    }));
+  }, [convexChats]);
 
   const formattedActiveChat = convexActiveChat ? {
     id: convexActiveChat._id,
@@ -59,23 +67,26 @@ export function useChats(activeChatId?: string): ChatFacade {
     modelConfig: convexActiveChat.modelConfig,
   } : undefined;
 
-  const formattedMessages = (convexMessages || []).map((m) => ({
-    id: m._id,
-    role: m.role,
-    content: m.content,
-    createdAt: m.createdAt,
-    stage1: m.stage1,
-    stage2: m.stage2,
-    stage3: m.stage3,
-    processing: m.processing,
-    currentStage: m.currentStage,
-    error: m.error,
-    imageBase64: m.imageBase64,
-    imageUrl: m.imageUrl,
-    type: m.type,
-    attachmentIds: m.attachmentIds,
-    attachments: (m as any).attachments || [],
-  }));
+  const formattedMessages = useMemo(() => {
+    if (!convexMessages) return EMPTY_MESSAGES;
+    return convexMessages.map((m) => ({
+      id: m._id,
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt,
+      stage1: m.stage1,
+      stage2: m.stage2,
+      stage3: m.stage3,
+      processing: m.processing,
+      currentStage: m.currentStage,
+      error: m.error,
+      imageBase64: m.imageBase64,
+      imageUrl: m.imageUrl,
+      type: m.type,
+      attachmentIds: m.attachmentIds,
+      attachments: (m as any).attachments || [],
+    }));
+  }, [convexMessages]);
 
   return {
     isLoading: convexChats === undefined || (activeChatId !== undefined && (convexActiveChat === undefined || convexMessages === undefined)),
@@ -120,6 +131,10 @@ export function useChats(activeChatId?: string): ChatFacade {
         messageId: result.messageId,
         error: result.error,
       };
+    },
+    toggleStarChat: async (chatId) => {
+      // No-op on mobile Convex for now
+      return Promise.resolve();
     },
   };
 }

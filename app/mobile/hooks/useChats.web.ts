@@ -28,10 +28,15 @@ export interface ChatFacade {
     systemPrompt?: string;
     history?: any[];
   }) => Promise<{ success: boolean; messageId?: string; error?: string }>;
+  toggleStarChat: (chatId: string) => Promise<void>;
 }
 
 // In-memory store for Web attachments since they are transient/local
 const webAttachments: Record<string, any> = {};
+
+// Stable memory references outside render cycle
+const EMPTY_MESSAGES: any[] = [];
+const EMPTY_CHATS: any[] = [];
 
 export function useChats(activeChatId?: string): ChatFacade {
   const webChatsMap = useWebChatStore((state) => state.chats);
@@ -42,11 +47,32 @@ export function useChats(activeChatId?: string): ChatFacade {
   const webUpdateMessage = useWebChatStore((state) => state.updateMessage);
   const webUpdateChatTitle = useWebChatStore((state) => state.updateChatTitle);
   const webDeleteMessage = useWebChatStore((state) => state.deleteMessage);
+  const webToggleStarChat = useWebChatStore((state) => state.toggleStarChat);
 
-  // Convert dictionary to sorted array for the UI
-  const webChatsArray = Object.values(webChatsMap).sort((a, b) => b.updatedAt - a.updatedAt);
-  const activeChat = activeChatId ? webChatsMap[activeChatId] : undefined;
-  const messages = activeChat ? activeChat.messages : [];
+  // Convert dictionary to sorted array for the UI, mapped to fit Convex format
+  const rawChatsArray = Object.values(webChatsMap).sort((a, b) => b.updatedAt - a.updatedAt);
+  const formattedChats = rawChatsArray.length > 0 
+    ? rawChatsArray.map((c) => ({
+        _id: c.id,
+        title: c.title,
+        lastMessageAt: c.updatedAt,
+        _creationTime: c.updatedAt,
+        modelConfig: c.modelConfig,
+        isStarred: !!c.isStarred,
+      }))
+    : EMPTY_CHATS;
+
+  const activeChatRaw = activeChatId ? webChatsMap[activeChatId] : undefined;
+  const formattedActiveChat = activeChatRaw ? {
+    _id: activeChatRaw.id,
+    title: activeChatRaw.title,
+    lastMessageAt: activeChatRaw.updatedAt,
+    _creationTime: activeChatRaw.updatedAt,
+    modelConfig: activeChatRaw.modelConfig,
+    isStarred: !!activeChatRaw.isStarred,
+  } : undefined;
+
+  const messages = activeChatRaw ? activeChatRaw.messages : EMPTY_MESSAGES;
 
   const handleWebRunCouncil = async (args: {
     conversationId: string;
@@ -195,8 +221,8 @@ export function useChats(activeChatId?: string): ChatFacade {
 
   return {
     isLoading: !isHydrated,
-    chats: webChatsArray,
-    activeChat,
+    chats: formattedChats,
+    activeChat: formattedActiveChat,
     messages,
     createChat: async (title, modelConfig) => {
       const newId = `web_${Date.now()}`;
@@ -222,5 +248,8 @@ export function useChats(activeChatId?: string): ChatFacade {
       return attachmentId;
     },
     runCouncil: handleWebRunCouncil,
+    toggleStarChat: async (id) => {
+      webToggleStarChat(id);
+    },
   };
 }
