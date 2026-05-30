@@ -14,9 +14,8 @@ import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { AnimatedButton } from "../../components/AnimatedButton";
-import { useMutation, useQuery, useAction } from "convex/react";
 import * as WebBrowser from "expo-web-browser";
-import { api } from "../../convex/_generated/api";
+import { useCouncilConfig } from "../../hooks/useCouncilConfig";
 import EmptyState from "../../components/EmptyState";
 
 import { PRESETS } from "../../lib/presets";
@@ -38,10 +37,8 @@ function ConfigureScreen() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Use Convex as source of truth for API key status
-  const hasApiKeyInDB = useQuery(api.users.hasApiKey);
-  const saveApiKeySecure = useAction(api.userActions.saveApiKeySecure);
-  const clearApiKeyInDB = useMutation(api.users.clearApiKey);
+  // Use the facade configuration hook
+  const { hasApiKey: hasApiKeyInDB, saveApiKeySecure, clearApiKeyInDB } = useCouncilConfig();
 
   useEffect(() => {
     if (hasApiKeyInDB) {
