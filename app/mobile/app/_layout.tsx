@@ -6,6 +6,7 @@ import {
   Text,
   AppState,
   AppStateStatus,
+  Platform,
 } from "react-native";
 import {
   Stack,
@@ -266,6 +267,60 @@ function ConfigErrorScreen() {
   );
 }
 
+/**
+ * WebAppNavigation bypasses Clerk authentication entirely for web guest sessions.
+ * Automatically redirects from (auth) routes to the history screen.
+ */
+function WebAppNavigation() {
+  const segments = useSegments();
+  const router = useRouter();
+  const settingsLoaded = useUIStore((state) => state.settingsLoaded);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
+    const pathSegments = segments as string[];
+    // If on the web, bypass the (auth) group entirely and route directly to main chat interface (/(tabs)/history)
+    if (pathSegments[0] === "(auth)") {
+      router.replace("/(tabs)/history");
+    }
+  }, [segments, settingsLoaded, router]);
+
+  if (!settingsLoaded) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#0f1419",
+        }}
+      >
+        <ActivityIndicator size="large" color="#20c997" />
+        <Text style={{ color: "#9ca3af", marginTop: 16 }}>
+          Connecting to Council...
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <OfflineBanner />
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: "#0f1419" },
+          headerTintColor: "#fff",
+          headerTitleStyle: { fontWeight: "bold" },
+          contentStyle: { backgroundColor: "#0f1419" },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="chat/[id]" options={{ title: "Chat" }} />
+      </Stack>
+    </>
+  );
+}
+
 function RootLayout() {
   const loadSettings = useUIStore((state) => state.loadSettings);
   const navigationRef = useNavigationContainerRef();
@@ -281,7 +336,19 @@ function RootLayout() {
     }
   }, [navigationRef]);
 
-  // Fail fast on configuration errors
+  // --- WEB: Frictionless Guest Layout ---
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: "#0f1419" }}>
+        <AppErrorBoundary>
+          <StatusBar style="light" />
+          <WebAppNavigation />
+        </AppErrorBoundary>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Fail fast on configuration errors (Mobile only)
   if (Config.validationError) {
     return (
       <SafeAreaProvider>
@@ -291,7 +358,7 @@ function RootLayout() {
     );
   }
 
-  // Safety check for Convex client
+  // Safety check for Convex client (Mobile only)
   if (!convex) {
     return (
       <SafeAreaProvider>
