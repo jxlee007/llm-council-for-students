@@ -407,6 +407,7 @@ function ChatScreen() {
           <FlatList
             ref={flatListRef}
             data={messagesList}
+            extraData={messagesList}
             keyExtractor={(item) => (item as any)._id || (item as any).id || String(Math.random())}
             renderItem={renderMessage}
             contentContainerStyle={{

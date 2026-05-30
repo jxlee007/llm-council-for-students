@@ -32,7 +32,7 @@ export interface ChatFacade {
 }
 
 // In-memory store for Web attachments since they are transient/local
-const webAttachments: Record<string, any> = {};
+export const webAttachments: Record<string, any> = {};
 
 // Stable memory references outside render cycle
 const EMPTY_MESSAGES: any[] = [];
