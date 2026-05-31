@@ -368,7 +368,7 @@ function RootLayout() {
     }
   }, [navigationRef]);
 
-  // Inject Vercel Speed Insights for Web performance tracking
+  // Inject Vercel Speed Insights and Analytics for Web tracking
   useEffect(() => {
     if (Platform.OS === 'web') {
       import('@vercel/speed-insights')
@@ -377,6 +377,14 @@ function RootLayout() {
         })
         .catch((err) => {
           console.warn('Failed to inject Vercel Speed Insights:', err);
+        });
+
+      import('@vercel/analytics')
+        .then(({ inject }) => {
+          inject();
+        })
+        .catch((err) => {
+          console.warn('Failed to inject Vercel Analytics:', err);
         });
     }
   }, []);

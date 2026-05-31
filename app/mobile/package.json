@@ -10,11 +10,12 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@vercel/speed-insights": "^1.1.0",
     "@clerk/clerk-expo": "^2.19.14",
     "@expo/metro-runtime": "~55.0.11",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@sentry/react-native": "8.3.0",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^1.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.31.7",
