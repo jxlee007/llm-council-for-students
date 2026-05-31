@@ -368,6 +368,19 @@ function RootLayout() {
     }
   }, [navigationRef]);
 
+  // Inject Vercel Speed Insights for Web performance tracking
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      import('@vercel/speed-insights')
+        .then(({ injectSpeedInsights }) => {
+          injectSpeedInsights();
+        })
+        .catch((err) => {
+          console.warn('Failed to inject Vercel Speed Insights:', err);
+        });
+    }
+  }, []);
+
   // --- WEB: Frictionless Guest Layout ---
   if (Platform.OS === 'web') {
     return (
