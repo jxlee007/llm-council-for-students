@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cd app/mobile && npm install --legacy-peer-deps && npx expo export",
+  "outputDirectory": "app/mobile/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
