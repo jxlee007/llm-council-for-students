@@ -389,71 +389,69 @@ function ChatScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View className={`flex-1 w-full ${isWeb ? "max-w-3xl mx-auto px-4 relative" : ""}`}>
-        <View className="flex-1">
-          {error && (
-            <Banner
-              message={error}
-              onDismiss={() => {
-                setError(null);
-                setCanRetry(false);
-              }}
-              action={
-                canRetry ? { label: "Retry", onPress: handleRetry } : undefined
-              }
-            />
-          )}
-
-          <FlatList
-            ref={flatListRef}
-            data={messagesList}
-            extraData={messagesList}
-            keyExtractor={(item) => (item as any)._id || (item as any).id || String(Math.random())}
-            renderItem={renderMessage}
-            contentContainerStyle={{
-              padding: 16,
-              paddingBottom: inputBarHeight,
+      <View className={`flex-1 ${isWeb ? 'max-w-3xl mx-auto w-full px-8 relative' : ''}`}>
+        {error && (
+          <Banner
+            message={error}
+            onDismiss={() => {
+              setError(null);
+              setCanRetry(false);
             }}
-            style={{ flex: 1 }}
-            removeClippedSubviews={true}
-            maxToRenderPerBatch={10}
-            initialNumToRender={15}
-            windowSize={21}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            ListEmptyComponent={
-              <View className="flex-1 items-center justify-center py-20">
-                <View className="w-24 h-24 bg-secondary rounded-full items-center justify-center mb-6">
-                  <MessageSquare size={48} color="#20c997" />
-                </View>
-                <Text className="text-foreground text-center mt-4 text-lg font-bold">
-                  Ask the Council
-                </Text>
-                <Text className="text-muted-foreground text-center mt-2 px-8">
-                  Ask a question to get answers from the LLM Council
-                </Text>
-              </View>
+            action={
+              canRetry ? { label: "Retry", onPress: handleRetry } : undefined
             }
           />
+        )}
 
-          {isProcessing && (
-            <View
-              className="absolute left-0 right-0 bg-secondary border-t border-border px-4 py-2"
-              style={{ bottom: inputBarHeight - insets.bottom }}
-            >
-              <View className="flex-row items-center">
-                <ActivityIndicator size="small" color="#20c997" />
-                <Text className="ml-2 text-primary text-sm font-medium">
-                  {currentStage === "vision" &&
-                    "👁 Analyzing image with vision model…"}
-                  {currentStage === 1 && "Stage 1: Collecting responses..."}
-                  {currentStage === 2 && "Stage 2: Council is deliberating..."}
-                  {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}
-                </Text>
+        <FlatList
+          ref={flatListRef}
+          data={messagesList}
+          extraData={messagesList}
+          keyExtractor={(item) => (item as any)._id || (item as any).id || String(Math.random())}
+          renderItem={renderMessage}
+          contentContainerStyle={{
+            padding: 24,
+            paddingBottom: inputBarHeight,
+          }}
+          style={{ flex: 1 }}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          initialNumToRender={15}
+          windowSize={21}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center py-20">
+              <View className="w-24 h-24 bg-secondary rounded-full items-center justify-center mb-6">
+                <MessageSquare size={48} color="#20c997" />
               </View>
+              <Text className="text-foreground text-center mt-4 text-lg font-bold">
+                Ask the Council
+              </Text>
+              <Text className="text-muted-foreground text-center mt-2 px-8">
+                Ask a question to get answers from the LLM Council
+              </Text>
             </View>
-          )}
-        </View>
+          }
+        />
+
+        {isProcessing && (
+          <View
+            className="absolute left-0 right-0 bg-secondary border-t border-border px-4 py-2"
+            style={{ bottom: inputBarHeight - insets.bottom }}
+          >
+            <View className="flex-row items-center">
+              <ActivityIndicator size="small" color="#20c997" />
+              <Text className="ml-2 text-primary text-sm font-medium">
+                {currentStage === "vision" &&
+                  "👁 Analyzing image with vision model…"}
+                {currentStage === 1 && "Stage 1: Collecting responses..."}
+                {currentStage === 2 && "Stage 2: Council is deliberating..."}
+                {currentStage === 3 && "Stage 3: Chairman is synthesizing..."}
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Unified Input Bar with animated keyboard handling */}
         <BottomInputBar

@@ -29,6 +29,7 @@ export interface ChatFacade {
     history?: any[];
   }) => Promise<{ success: boolean; messageId?: string; error?: string }>;
   toggleStarChat: (chatId: string) => Promise<void>;
+  renameChat: (chatId: string, title: string) => Promise<void>;
 }
 
 // In-memory store for Web attachments since they are transient/local
@@ -59,6 +60,8 @@ export function useChats(activeChatId?: string): ChatFacade {
         _creationTime: c.updatedAt,
         modelConfig: c.modelConfig,
         isStarred: !!c.isStarred,
+        firstQuery: c.messages && c.messages.length > 0 ? c.messages[0].content : undefined,
+        userQueriesCount: c.messages ? c.messages.filter((m) => m.role === "user").length : 0,
       }))
     : EMPTY_CHATS;
 
@@ -250,6 +253,9 @@ export function useChats(activeChatId?: string): ChatFacade {
     runCouncil: handleWebRunCouncil,
     toggleStarChat: async (id) => {
       webToggleStarChat(id);
+    },
+    renameChat: async (id, title) => {
+      useWebChatStore.getState().renameChat(id, title);
     },
   };
 }

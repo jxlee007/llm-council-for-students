@@ -9,7 +9,7 @@ import {
   TextInput,
   Switch,
 } from "react-native";
-import { Crown, Check, CheckCircle, Trash2, Key } from "lucide-react-native";
+import { Crown, Check, CheckCircle, Trash2, Key, Twitter, ExternalLink } from "lucide-react-native";
 import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
@@ -216,6 +216,44 @@ function ConfigureScreen() {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+        </View>
+
+        {/* Profile Card Section */}
+        <View className="px-4 mb-4">
+          <Text className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Developer Profile
+          </Text>
+          <View className="bg-card rounded-xl border border-border p-4">
+            <View className="flex-row items-center gap-3 mb-3">
+              {/* Avatar / Profile Icon */}
+              <View className="w-10 h-10 rounded-full bg-sky-500/10 border border-sky-500/20 items-center justify-center">
+                <Twitter size={18} color="#00acee" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-foreground text-sm font-semibold">
+                  Jimmy Falco
+                </Text>
+                <Text className="text-muted-foreground text-xs mt-0.5">
+                  @JimmyFalco65924
+                </Text>
+              </View>
+            </View>
+
+            <Text className="text-muted-foreground text-sm mb-4 leading-5">
+              For updates, questions, or collaboration on the LLM Council project, feel free to reach out.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => WebBrowser.openBrowserAsync("https://x.com/JimmyFalco65924")}
+              className="bg-sky-500/10 border border-sky-500/20 hover:border-sky-500/30 rounded-lg py-3 flex-row items-center justify-center gap-1.5 active:bg-sky-500/25"
+            >
+              <Twitter size={14} color="#00acee" />
+              <Text className="text-sky-500 font-semibold text-sm">
+                Follow on X
+              </Text>
+              <ExternalLink size={12} color="#00acee" />
+            </TouchableOpacity>
           </View>
         </View>
 

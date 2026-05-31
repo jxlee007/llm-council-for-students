@@ -56,6 +56,8 @@ export function useChats(activeChatId?: string): ChatFacade {
       updatedAt: c.lastMessageAt,
       messages: [],
       modelConfig: c.modelConfig,
+      firstQuery: c.firstQuery,
+      userQueriesCount: c.userQueriesCount,
     }));
   }, [convexChats]);
 

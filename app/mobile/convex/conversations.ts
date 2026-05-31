@@ -21,7 +21,26 @@ export const list = query({
       .order("desc")
       .collect();
 
-    return conversations.filter((c) => !c.isArchived);
+    const activeConversations = conversations.filter((c) => !c.isArchived);
+
+    const results = [];
+    for (const c of activeConversations) {
+      const messages = await ctx.db
+        .query("messages")
+        .withIndex("by_conversation", (q) => q.eq("conversationId", c._id))
+        .collect();
+
+      const firstMessage = messages.length > 0 ? messages[0] : null;
+      const userQueriesCount = messages.filter((m) => m.role === "user").length;
+
+      results.push({
+        ...c,
+        firstQuery: firstMessage ? firstMessage.content : undefined,
+        userQueriesCount,
+      });
+    }
+
+    return results;
   },
 });
 

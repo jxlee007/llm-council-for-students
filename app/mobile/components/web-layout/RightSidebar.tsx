@@ -9,12 +9,13 @@ import {
   Switch,
   Platform,
 } from "react-native";
-import { Crown, Check, Trash2, Key, HelpCircle, Settings, ShieldCheck, Cpu } from "lucide-react-native";
+import { Crown, Check, Trash2, Key, HelpCircle, Settings, ShieldCheck, Cpu, Twitter, ExternalLink } from "lucide-react-native";
 import { useUIStore } from "../../lib/store";
 import { getFreeModels } from "../../lib/api";
 import { Model } from "../../lib/types";
 import { useCouncilConfig } from "../../hooks/useCouncilConfig";
 import PresetsModal from "../PresetsModal";
+import * as WebBrowser from "expo-web-browser";
 
 const FALLBACK_MODELS: Model[] = [
   {
@@ -367,6 +368,45 @@ export default function RightSidebar() {
                     </TouchableOpacity>
                   </View>
                 )}
+              </View>
+            </View>
+
+            {/* Profile Card Section */}
+            <View className="mb-6">
+              <Text className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2.5 px-1">
+                Developer Profile
+              </Text>
+
+              <View className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
+                <View className="flex-row items-center gap-3 mb-3">
+                  {/* Avatar / Profile Icon */}
+                  <View className="w-10 h-10 rounded-full bg-sky-500/10 border border-sky-500/20 items-center justify-center">
+                    <Twitter size={18} color="#00acee" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white text-xs font-semibold">
+                      Jimmy Falco
+                    </Text>
+                    <Text className="text-slate-400 text-[10px] mt-0.5">
+                      @JimmyFalco65924
+                    </Text>
+                  </View>
+                </View>
+
+                <Text className="text-slate-400 text-[11px] mb-3.5 leading-4">
+                  For updates, questions, or collaboration on the LLM Council project, feel free to reach out.
+                </Text>
+
+                <TouchableOpacity
+                  onPress={() => WebBrowser.openBrowserAsync("https://x.com/JimmyFalco65924")}
+                  className="bg-sky-500/10 border border-sky-500/20 hover:border-sky-500/30 rounded-lg py-2 flex-row items-center justify-center gap-1.5 active:bg-sky-500/25 transition-all"
+                >
+                  <Twitter size={13} color="#00acee" />
+                  <Text className="text-sky-400 font-bold text-[11px]">
+                    Follow on X
+                  </Text>
+                  <ExternalLink size={11} color="#00acee" />
+                </TouchableOpacity>
               </View>
             </View>
           </View>

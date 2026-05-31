@@ -46,6 +46,7 @@ interface WebChatState {
   updateChatTitle: (chatId: string, title: string) => void;
   deleteMessage: (chatId: string, messageId: string) => void;
   toggleStarChat: (chatId: string) => void;
+  renameChat: (chatId: string, title: string) => void;
 }
 
 // Dummy storage for native platforms so Zustand persist doesn't crash
@@ -150,6 +151,17 @@ export const useWebChatStore = create<WebChatState>()(
               updatedAt: Date.now(),
               messages: chat.messages.filter((m) => m.id !== messageId)
             }
+          }
+        };
+      }),
+
+      renameChat: (chatId, title) => set((state) => {
+        const chat = state.chats[chatId];
+        if (!chat) return state;
+        return {
+          chats: {
+            ...state.chats,
+            [chatId]: { ...chat, title, updatedAt: Date.now() }
           }
         };
       })

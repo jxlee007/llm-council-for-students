@@ -9,7 +9,7 @@ import {
   Platform,
   UIManager,
 } from "react-native";
-import { Bot, Copy, Check, ChevronDown, ChevronUp, RefreshCw } from "lucide-react-native";
+import { Copy, Check, ChevronDown, ChevronUp, RefreshCw } from "lucide-react-native";
 import type { Message, AssistantMessage, AggregateRanking } from "../lib/types";
 import CouncilResponse from "./CouncilResponse";
 import React, { useState } from "react";
@@ -52,9 +52,17 @@ function MessageBubble({
 
   const handleCopy = async (text: string) => {
     if (!text) return;
-    await Clipboard.setStringAsync(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        await Clipboard.setStringAsync(text);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.warn('Copy failed:', err);
+    }
   };
 
   const toggleExpand = () => {
@@ -316,7 +324,11 @@ function MessageBubble({
   const copyText = getAssistantCopyText();
 
   return (
-    <View style={{ marginBottom: 16, width: "100%" }}>
+    <View
+      style={{ marginBottom: 16, width: "100%" }}
+      // @ts-ignore — web only group class for hover detection
+      className="group"
+    >
       <View style={{ width: "100%" }}>
         <CouncilResponse
           stage1={assistantMessage.stage1}
@@ -326,17 +338,31 @@ function MessageBubble({
         />
       </View>
       {copyText ? (
-        <View style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 4, marginLeft: 2, opacity: 0.5 }}>
+        <View
+          style={{ flexDirection: "row", justifyContent: "flex-start", marginTop: 6, marginLeft: 2 }}
+          // @ts-ignore — web className for hover reveal
+          className="opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        >
           <TouchableOpacity
             onPress={() => handleCopy(copyText)}
-            style={{ padding: 4 }}
+            style={{
+              padding: 6,
+              borderRadius: 8,
+              backgroundColor: copied ? "rgba(52, 211, 153, 0.1)" : "rgba(148, 163, 184, 0.08)",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+            }}
             activeOpacity={0.7}
           >
             {copied ? (
-              <Check size={12} color="#34d399" />
+              <Check size={13} color="#34d399" />
             ) : (
-              <Copy size={12} color="#94a3b8" />
+              <Copy size={13} color="#94a3b8" />
             )}
+            <Text style={{ color: copied ? "#34d399" : "#94a3b8", fontSize: 11, fontWeight: "500" }}>
+              {copied ? "Copied!" : "Copy"}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : null}

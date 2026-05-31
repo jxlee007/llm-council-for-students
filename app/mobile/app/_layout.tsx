@@ -30,6 +30,7 @@ import { initLogger, sentryWrap, navigationIntegration, logError, logWarning } f
 import * as Sentry from '@sentry/react-native';
 import LeftSidebar from "../components/web-layout/LeftSidebar";
 import RightSidebar from "../components/web-layout/RightSidebar";
+import WebSearchModal from "../components/web-layout/WebSearchModal";
 
 // Sentry is initialized via initLogger() in AppNavigation/RootLayout below.
 
@@ -278,6 +279,7 @@ function WebAppNavigation() {
   const router = useRouter();
   const settingsLoaded = useUIStore((state) => state.settingsLoaded);
   const showRightSidebar = useUIStore((state) => state.showRightSidebar);
+  const isLeftSidebarOpen = useUIStore((state) => state.isLeftSidebarOpen);
 
   useEffect(() => {
     if (!settingsLoaded) return;
@@ -308,17 +310,24 @@ function WebAppNavigation() {
 
   return (
     <View className="flex-1 flex-row h-screen bg-[#0f1419]">
-      {/* Left Pane: Fixed Sidebar */}
-      <View className="w-72 border-r border-slate-800/80 bg-[#0f1419]" style={{ overflow: "visible", zIndex: 10 }}>
+      {/* Left Pane: Collapsible Sidebar (w-72 expanded / w-14 icon-rail collapsed) */}
+      <View
+        className={`transition-all duration-300 ease-in-out bg-[#0f1419] ${
+          isLeftSidebarOpen
+            ? "w-72 border-r border-slate-800/80"
+            : "w-14 border-r border-slate-800/50"
+        }`}
+        style={{ overflow: "visible", zIndex: 10, flexShrink: 0 }}
+      >
         <LeftSidebar />
       </View>
 
       {/* Center Pane: Main active stack view */}
-      <View className="flex-1 bg-[#0f1419]">
+      <View className="flex-1 bg-[#0f1419] min-w-0">
         <OfflineBanner />
         <Stack
           screenOptions={{
-            headerShown: false, // Clean desktop-class layout with headers hidden
+            headerShown: false,
             contentStyle: { backgroundColor: "#0f1419" },
           }}
         >
@@ -337,6 +346,9 @@ function WebAppNavigation() {
       >
         <RightSidebar />
       </View>
+
+      {/* Global search modal — mounted here so Cmd+K works anywhere */}
+      <WebSearchModal />
     </View>
   );
 }

@@ -84,6 +84,15 @@ interface UIState {
   toggleRightSidebar: () => void;
   rightSidebarTab: 'models' | 'settings';
   setRightSidebarTab: (tab: 'models' | 'settings') => void;
+
+  // Left sidebar collapsible state (web only)
+  isLeftSidebarOpen: boolean;
+  toggleLeftSidebar: () => void;
+
+  // Global search modal state (web only)
+  isSearchOpen: boolean;
+  openSearch: () => void;
+  closeSearch: () => void;
 }
 
 // findMatchingPreset removed since presets are now dynamic
@@ -102,10 +111,15 @@ export const useUIStore = create<UIState>((set, get) => ({
   modelsLastFetched: 0,
   showRightSidebar: false,
   rightSidebarTab: 'models',
+  isLeftSidebarOpen: true,
+  isSearchOpen: false,
 
   setPendingMessage: (message) => set({ pendingMessage: message }),
   toggleRightSidebar: () => set((state) => ({ showRightSidebar: !state.showRightSidebar })),
   setRightSidebarTab: (tab) => set({ rightSidebarTab: tab }),
+  toggleLeftSidebar: () => set((state) => ({ isLeftSidebarOpen: !state.isLeftSidebarOpen })),
+  openSearch: () => set({ isSearchOpen: true }),
+  closeSearch: () => set({ isSearchOpen: false }),
 
   // Fetch models with 60s cache
   fetchModelsIfNeeded: async () => {
