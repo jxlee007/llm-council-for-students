@@ -144,6 +144,11 @@ export default function WebSearchModal() {
             onChangeText={setQuery}
             placeholder="Search chats…"
             placeholderTextColor="#4b5563"
+            onKeyPress={(e) => {
+              if (e.nativeEvent.key === "Escape") {
+                closeSearch();
+              }
+            }}
             style={{
               flex: 1,
               color: "#f1f5f9",

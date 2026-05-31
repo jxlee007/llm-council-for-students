@@ -10,7 +10,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   // App naming based on environment
   const appName = isDev
-    ? "LLM Council (Dev)"
+    ? "LLM Council"
     : (isPreview ? "LLM Council (Preview)" : "LLM Council");
 
   return {

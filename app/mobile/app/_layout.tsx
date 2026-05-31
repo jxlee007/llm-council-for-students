@@ -284,9 +284,9 @@ function WebAppNavigation() {
   useEffect(() => {
     if (!settingsLoaded) return;
     const pathSegments = segments as string[];
-    // If on the web, bypass the (auth) group entirely and route directly to main chat interface (/(tabs)/history)
+    // If on the web, bypass the (auth) group entirely and route directly to main chat interface (/(tabs))
     if (pathSegments[0] === "(auth)") {
-      router.replace("/(tabs)/history");
+      router.replace("/(tabs)");
     }
   }, [segments, settingsLoaded, router]);
 
